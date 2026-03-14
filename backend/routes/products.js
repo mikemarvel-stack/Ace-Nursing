@@ -134,9 +134,11 @@ router.patch('/:id', protect, restrictTo('admin'), async (req, res, next) => {
       Object.entries(req.body).filter(([k]) => !forbidden.has(k))
     );
 
+    // Coerce empty badge string to null to satisfy enum
+    if ('badge' in safeBody && safeBody.badge === '') safeBody.badge = null;
+
     const product = await Product.findByIdAndUpdate(req.params.id, safeBody, {
       new: true,
-      runValidators: true,
     });
     if (!product) return res.status(404).json({ error: 'Product not found.' });
 

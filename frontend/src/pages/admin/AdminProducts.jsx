@@ -31,6 +31,7 @@ export default function AdminProducts() {
     if (!editingProduct) return;
     setForm({
       title: editingProduct.title || '',
+      description: editingProduct.description || '',
       category: editingProduct.category || 'Study Guides',
       price: editingProduct.price || 0,
       originalPrice: editingProduct.originalPrice || 0,
@@ -164,6 +165,8 @@ export default function AdminProducts() {
             <div style={{ display: 'grid', gap: 12 }}>
               <label style={{ fontSize: 12, fontWeight: 600 }}>Title</label>
               <input className="input" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+              <label style={{ fontSize: 12, fontWeight: 600 }}>Description</label>
+              <textarea className="input" value={form.description || ''} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} style={{ resize: 'vertical' }} />
               <label style={{ fontSize: 12, fontWeight: 600 }}>Category</label>
               <select className="input" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
                 <option>Study Guides</option>
