@@ -64,7 +64,10 @@ export const useAuthStore = create(
 
       setAuth: (user, token) => set({ user, token, isAuthenticated: true }),
 
-      logout: () => set({ user: null, token: null, isAuthenticated: false }),
+      logout: () => {
+        set({ user: null, token: null, isAuthenticated: false });
+        useCartStore.getState().clearCart();
+      },
 
       updateUser: (updates) =>
         set({ user: { ...get().user, ...updates } }),
