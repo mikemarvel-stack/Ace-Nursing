@@ -40,13 +40,6 @@ export const useCartStore = create(
       openCart: () => set({ isOpen: true }),
       closeCart: () => set({ isOpen: false }),
       toggleCart: () => set({ isOpen: !get().isOpen }),
-
-      get totalItems() {
-        return get().items.reduce((sum, i) => sum + i.qty, 0);
-      },
-      get subtotal() {
-        return get().items.reduce((sum, i) => sum + i.price * i.qty, 0);
-      },
     }),
     {
       name: 'acenursing-cart',
@@ -54,6 +47,12 @@ export const useCartStore = create(
     }
   )
 );
+
+export const cartTotalItems = (state) =>
+  state.items.reduce((sum, i) => sum + i.qty, 0);
+
+export const cartSubtotal = (state) =>
+  state.items.reduce((sum, i) => sum + i.price * i.qty, 0);
 
 // ─── Auth Store ────────────────────────────────────────────────────────────────
 export const useAuthStore = create(

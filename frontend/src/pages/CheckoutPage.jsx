@@ -38,8 +38,7 @@ export default function CheckoutPage() {
   });
 
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-  const vat = subtotal * 0.16;
-  const total = subtotal + vat;
+  const total = subtotal;
 
   if (items.length === 0) {
     return (
@@ -257,13 +256,8 @@ export default function CheckoutPage() {
             ))}
 
             <div style={{ borderTop: '1px solid var(--border)', marginTop: 12, paddingTop: 14 }}>
-              {[['Subtotal', subtotal], ['VAT (16%)', vat]].map(([l, v]) => (
-                <div key={l} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13, color: 'var(--muted)' }}>
-                  <span>{l}</span><span>{v.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
-                </div>
-              ))}
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTop: '1.5px solid var(--border)' }}>
-                <span style={{ fontWeight: 800, fontSize: 16, color: 'var(--navy)' }}>Total</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTop: '1.5px solid var(--border)' }}>
+                        <span style={{ fontWeight: 800, fontSize: 16, color: 'var(--navy)' }}>Total</span>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontWeight: 800, fontSize: 20, color: 'var(--navy)' }}>{total.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</div>
                   <div style={{ fontSize: 11, color: 'var(--muted)' }}></div>

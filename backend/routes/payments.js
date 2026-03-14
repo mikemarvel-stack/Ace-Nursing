@@ -164,11 +164,10 @@ router.post('/paypal/capture', optionalAuth, async (req, res, next) => {
 
     await order.save();
 
-    // Send confirmation email
-    order.downloadEmailSent = true;
-    await order.save();
-
-    sendOrderConfirmation({ order, downloadLinks }).catch(console.error);
+    // Send confirmation email — mark sent only on success
+    sendOrderConfirmation({ order, downloadLinks })
+      .then(() => Order.findByIdAndUpdate(order._id, { downloadEmailSent: true }).catch(() => {}))
+      .catch(console.error);
     sendAdminOrderAlert({ order }).catch(console.error);
 
     res.json({
@@ -203,7 +202,10 @@ router.get('/download/:token', async (req, res, next) => {
       return res.status(404).json({ error: 'Invalid or expired download link.' });
     }
 
-    const item = order.items.find(i => i.downloadToken === token);
+    const item = order.items.find(i =>
+      i.downloadToken &&
+      crypto.timingSafeEqual(Buffer.from(i.downloadToken), Buffer.from(token))
+    );
     if (!item) return res.status(404).json({ error: 'Download not found.' });
 
     if (new Date() > new Date(item.downloadExpiry)) {

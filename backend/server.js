@@ -91,6 +91,19 @@ const authLimiter = rateLimit({
 app.use('/api', globalLimiter);
 app.use('/api/auth', authLimiter);
 
+// ─── CSRF mitigation ─────────────────────────────────────────────────────────
+// Browsers cannot set Content-Type: application/json on cross-origin form
+// submissions, so enforcing it on mutating requests prevents CSRF attacks.
+app.use((req, res, next) => {
+  const mutating = ['POST', 'PUT', 'PATCH', 'DELETE'];
+  if (!mutating.includes(req.method)) return next();
+  const ct = req.headers['content-type'] || '';
+  if (!ct.includes('application/json') && !ct.includes('multipart/form-data')) {
+    return res.status(415).json({ error: 'Unsupported Media Type' });
+  }
+  next();
+});
+
 // ─── Body Parsing ─────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));

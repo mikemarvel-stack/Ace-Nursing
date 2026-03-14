@@ -3,6 +3,19 @@ const router = express.Router();
 const Product = require('../models/Product');
 const { protect, restrictTo, optionalAuth } = require('../middleware/auth');
 
+// ─── GET /api/products/admin/all ── Admin only ────────────────────────────────
+router.get('/admin/all', protect, restrictTo('admin'), async (req, res, next) => {
+  try {
+    const products = await Product.find()
+      .sort('-createdAt')
+      .populate('uploadedBy', 'firstName lastName email')
+      .select('-reviews');
+    res.json({ products });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─── GET /api/products ────────────────────────────────────────────────────────
 router.get('/', optionalAuth, async (req, res, next) => {
   try {
@@ -67,7 +80,7 @@ router.get('/', optionalAuth, async (req, res, next) => {
   }
 });
 
-// ─── GET /api/products/featured ───────────────────────────────────────────────
+// ─── GET /api/products/featured ─────────────────────────────────────────────
 router.get('/featured', async (req, res, next) => {
   try {
     const products = await Product.find({ isActive: true, featured: true })
@@ -116,10 +129,12 @@ router.post('/', protect, restrictTo('admin'), async (req, res, next) => {
 // ─── PATCH /api/products/:id ── Admin only ────────────────────────────────────
 router.patch('/:id', protect, restrictTo('admin'), async (req, res, next) => {
   try {
-    const forbidden = ['reviews', 'rating', 'totalSales', 'uploadedBy'];
-    forbidden.forEach(f => delete req.body[f]);
+    const forbidden = new Set(['reviews', 'rating', 'totalSales', 'uploadedBy']);
+    const safeBody = Object.fromEntries(
+      Object.entries(req.body).filter(([k]) => !forbidden.has(k))
+    );
 
-    const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
+    const product = await Product.findByIdAndUpdate(req.params.id, safeBody, {
       new: true,
       runValidators: true,
     });
@@ -170,19 +185,6 @@ router.post('/:id/reviews', protect, async (req, res, next) => {
     await product.save();
 
     res.status(201).json({ message: 'Review added successfully.', rating: product.rating });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// ─── GET /api/products/admin/all ── Admin only ────────────────────────────────
-router.get('/admin/all', protect, restrictTo('admin'), async (req, res, next) => {
-  try {
-    const products = await Product.find()
-      .sort('-createdAt')
-      .populate('uploadedBy', 'firstName lastName email')
-      .select('-reviews');
-    res.json({ products });
   } catch (err) {
     next(err);
   }

@@ -1,9 +1,18 @@
 const axios = require('axios');
 
+const ALLOWED_PAYPAL_HOSTS = new Set([
+  'https://api-m.paypal.com',
+  'https://api-m.sandbox.paypal.com',
+]);
+
 const PAYPAL_BASE =
   process.env.PAYPAL_MODE === 'live'
     ? 'https://api-m.paypal.com'
     : 'https://api-m.sandbox.paypal.com';
+
+if (!ALLOWED_PAYPAL_HOSTS.has(PAYPAL_BASE)) {
+  throw new Error(`Invalid PAYPAL_BASE: ${PAYPAL_BASE}`);
+}
 
 /**
  * Get a PayPal OAuth2 access token

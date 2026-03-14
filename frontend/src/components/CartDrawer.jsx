@@ -6,8 +6,6 @@ export default function CartDrawer() {
   const navigate = useNavigate();
 
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-  const vat = subtotal * 0.16;
-  const total = subtotal + vat;
   const itemCount = items.reduce((s, i) => s + i.qty, 0);
 
   const toUSD = (usd) => usd.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -102,16 +100,10 @@ export default function CartDrawer() {
         {/* Footer */}
         {items.length > 0 && (
           <div style={{ padding: '20px 24px', borderTop: '1px solid var(--border)', background: 'var(--gray)', flexShrink: 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 14, color: 'var(--muted)' }}>
-              <span>Subtotal</span><span>{toUSD(subtotal)}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14, fontSize: 14, color: 'var(--muted)' }}>
-              <span>VAT (16%)</span><span>{toUSD(vat)}</span>
-            </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 12, borderTop: '1.5px solid var(--border)', marginBottom: 18 }}>
               <span style={{ fontWeight: 700, fontSize: 17, color: 'var(--navy)' }}>Total</span>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontWeight: 700, fontSize: 20, color: 'var(--navy)' }}>{toUSD(total)}</div>
+                <div style={{ fontWeight: 700, fontSize: 20, color: 'var(--navy)' }}>{toUSD(subtotal)}</div>
                 <div style={{ fontSize: 12, color: 'var(--muted)' }}></div>
               </div>
             </div>

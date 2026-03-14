@@ -105,9 +105,12 @@ export default function AccountPage() {
                           <span style={{ fontSize: 18 }}>{item.emoji || '📘'}</span>
                           <span style={{ fontSize: 13, color: 'var(--navy)', fontWeight: 500 }}>{item.title}</span>
                           {o.status === 'completed' && item.downloadToken && (
-                            <a href={`/api/payments/download/${item.downloadToken}`}
+                            <a
+                              href={`${import.meta.env.VITE_API_URL || '/api'}/payments/download/${item.downloadToken}`}
                               className="btn btn-primary btn-sm"
-                              style={{ marginLeft: 8, textDecoration: 'none', fontSize: 11, padding: '4px 10px' }}>
+                              style={{ marginLeft: 8, textDecoration: 'none', fontSize: 11, padding: '4px 10px' }}
+                              rel="noopener noreferrer"
+                            >
                               ⬇ Download
                             </a>
                           )}

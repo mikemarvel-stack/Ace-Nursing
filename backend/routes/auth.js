@@ -4,6 +4,13 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const { protect, signToken } = require('../middleware/auth');
 const { sendWelcomeEmail, sendPasswordResetEmail } = require('../utils/email');
+const rateLimit = require('express-rate-limit');
+
+const setupAdminLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: { error: 'Too many setup attempts.' },
+});
 
 // ─── Helper ────────────────────────────────────────────────────────────────────
 const sendAuthResponse = (res, user, statusCode = 200) => {
@@ -156,7 +163,7 @@ router.post('/reset-password/:token', async (req, res, next) => {
 });
 
 // ─── POST /api/auth/setup-admin (one-time use with setup key) ─────────────────
-router.post('/setup-admin', async (req, res, next) => {
+router.post('/setup-admin', setupAdminLimiter, async (req, res, next) => {
   try {
     if (req.body.setupKey !== process.env.ADMIN_SETUP_KEY) {
       return res.status(403).json({ error: 'Invalid setup key.' });
