@@ -29,7 +29,7 @@ export default function OrderSuccessPage() {
           <div style={{ background: 'var(--gray)', borderRadius: 16, padding: 24, marginBottom: 28, textAlign: 'left' }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--navy)', marginBottom: 16 }}>📥 Download Your Files</h3>
             {order.downloadLinks.map((link, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: i < order.downloadLinks.length - 1 ? '1px solid var(--border)' : 'none' }}>
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, padding: '12px 0', borderBottom: i < order.downloadLinks.length - 1 ? '1px solid var(--border)' : 'none' }}>
                 <div>
                   <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--navy)', marginBottom: 2 }}>{link.title}</p>
                   <p style={{ fontSize: 12, color: 'var(--muted)' }}>Expires {new Date(link.expiry).toLocaleDateString()}</p>

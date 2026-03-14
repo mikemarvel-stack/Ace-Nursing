@@ -182,52 +182,46 @@ h1, h2, h3 { line-height: 1.2; }
 }
 
 /* ─── Responsive ──────────────────────────────────────────────────────────── */
+
+/* Admin page base padding */
+.admin-page { padding: 28px 24px; }
+
 @media (max-width: 768px) {
   .container { padding: 0 16px; }
   .hide-mobile { display: none !important; }
   .show-mobile { display: flex !important; }
   .section { padding: 48px 0; }
 
-  /* Navbar cart button — hide text label on mobile */
-  .hero-grid {
-    grid-template-columns: 1fr !important;
-    gap: 32px !important;
-  }
+  /* Admin layout */
+  .admin-sidebar-desktop { display: none !important; }
+  .admin-sidebar-mobile { display: flex !important; }
+  .admin-topbar { display: flex !important; }
+  .admin-page { padding: 16px 14px; }
 
-  .footer-grid {
-    grid-template-columns: 1fr 1fr !important;
-    gap: 32px !important;
-  }
-
-  .checkout-grid {
-    grid-template-columns: 1fr !important;
-  }
-
-  .checkout-grid > div:last-child {
-    position: static !important;
-  }
-
-  .name-grid {
-    grid-template-columns: 1fr !important;
-  }
+  /* Public page grids */
+  .hero-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
+  .footer-grid { grid-template-columns: 1fr 1fr !important; gap: 28px !important; }
+  .checkout-grid { grid-template-columns: 1fr !important; }
+  .checkout-grid > div:last-child { position: static !important; }
+  .name-grid { grid-template-columns: 1fr !important; }
+  .three-col-grid { grid-template-columns: 1fr 1fr !important; }
+  .product-detail-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
+  .specs-grid { grid-template-columns: repeat(3, 1fr) !important; }
 
   .product-grid {
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 14px;
   }
 
-  .section-title {
-    font-size: clamp(24px, 7vw, 36px);
-  }
+  .section-title { font-size: clamp(24px, 7vw, 36px); }
+
+  /* Account page tabs full width */
+  .account-tabs { width: 100% !important; }
 }
 
 @media (max-width: 480px) {
-  .footer-grid {
-    grid-template-columns: 1fr !important;
-  }
-
-  .product-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
+  .footer-grid { grid-template-columns: 1fr !important; }
+  .specs-grid { grid-template-columns: 1fr 1fr !important; }
+  .product-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .three-col-grid { grid-template-columns: 1fr !important; }
 }

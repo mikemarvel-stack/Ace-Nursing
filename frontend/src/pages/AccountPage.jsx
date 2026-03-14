@@ -55,7 +55,7 @@ export default function AccountPage() {
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 28, background: 'var(--gray)', borderRadius: 12, padding: 4, width: 'fit-content' }}>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 28, background: 'var(--gray)', borderRadius: 12, padding: 4, width: 'fit-content' }} className="account-tabs">
           {['orders', 'profile'].map(t => (
             <button key={t} onClick={() => setTab(t)}
               style={{ padding: '9px 22px', borderRadius: 9, border: 'none', background: tab === t ? 'var(--navy)' : 'transparent', color: tab === t ? '#fff' : 'var(--muted)', fontWeight: tab === t ? 700 : 400, fontSize: 14, cursor: 'pointer', textTransform: 'capitalize', transition: 'all 0.2s' }}>
@@ -129,7 +129,7 @@ export default function AccountPage() {
           <div style={{ maxWidth: 520 }}>
             <form onSubmit={handleSave} className="card" style={{ padding: 28 }}>
               <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--navy)', marginBottom: 22 }}>Edit Profile</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }} className="name-grid">
                 {[['firstName', 'First Name'], ['lastName', 'Last Name']].map(([k, l]) => (
                   <div key={k}>
                     <label className="label">{l}</label>
@@ -142,7 +142,7 @@ export default function AccountPage() {
                 <input className="input" value={user?.email} disabled style={{ opacity: 0.6, cursor: 'not-allowed' }} />
                 <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>Email cannot be changed</p>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }} className="name-grid">
                 <div>
                   <label className="label">Phone</label>
                   <input className="input" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="+254 7XX XXX XXX" />

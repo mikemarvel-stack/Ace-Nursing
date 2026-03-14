@@ -13,14 +13,14 @@ const STATUS_COLORS = {
 
 function StatCard({ icon, label, value, sub, color }) {
   return (
-    <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 22px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
-        <div style={{ fontSize: 28 }}>{icon}</div>
-        {color && <span style={{ background: color + '20', color, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>This month</span>}
+    <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 18px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+        <div style={{ fontSize: 26 }}>{icon}</div>
+        {color && <span style={{ background: color + '20', color, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>This month</span>}
       </div>
-      <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--navy)', lineHeight: 1 }}>{value}</div>
-      <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 5 }}>{label}</div>
-      {sub && <div style={{ fontSize: 12, color: '#059669', marginTop: 4, fontWeight: 600 }}>{sub}</div>}
+      <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--navy)', lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{label}</div>
+      {sub && <div style={{ fontSize: 11, color: '#059669', marginTop: 3, fontWeight: 600 }}>{sub}</div>}
     </div>
   );
 }
@@ -32,70 +32,65 @@ export function AdminDashboard() {
 
   useEffect(() => {
     Promise.all([ordersAPI.getStats(), ordersAPI.getAll({ limit: 8 })])
-      .then(([statsRes, ordersRes]) => {
-        setStats(statsRes.data);
-        setOrders(ordersRes.data.orders);
-      })
+      .then(([s, o]) => { setStats(s.data); setOrders(o.data.orders); })
       .catch(() => toast.error('Failed to load dashboard data'))
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) return (
-    <div style={{ padding: 32 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px,1fr))', gap: 16, marginBottom: 32 }}>
-        {[...Array(5)].map((_, i) => <div key={i} className="skeleton" style={{ height: 110, borderRadius: 14 }} />)}
+    <div className="admin-page">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px,1fr))', gap: 12, marginBottom: 24 }}>
+        {[...Array(5)].map((_, i) => <div key={i} className="skeleton" style={{ height: 100, borderRadius: 14 }} />)}
       </div>
     </div>
   );
 
   return (
-    <div style={{ padding: 32 }}>
-      <div style={{ marginBottom: 28 }}>
-        <h1 className="serif" style={{ fontSize: 34, color: 'var(--navy)' }}>Dashboard</h1>
-        <p style={{ color: 'var(--muted)', fontSize: 14 }}>Welcome back. Here's what's happening.</p>
+    <div className="admin-page">
+      <div style={{ marginBottom: 24 }}>
+        <h1 className="serif" style={{ fontSize: 28, color: 'var(--navy)' }}>Dashboard</h1>
+        <p style={{ color: 'var(--muted)', fontSize: 13 }}>Welcome back. Here's what's happening.</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 36 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 28 }}>
         <StatCard icon="💰" label="Total Revenue" value={`$${(stats?.totalRevenue || 0).toFixed(2)}`} sub={`+$${(stats?.thisMonth?.revenue || 0).toFixed(2)} this month`} color="#059669" />
         <StatCard icon="🧾" label="Total Orders" value={stats?.totalOrders || 0} sub={`${stats?.thisMonth?.orders || 0} this month`} color="#1A7A6E" />
-        <StatCard icon="⏳" label="Pending / Processing" value={stats?.pendingOrders || 0} />
-        <StatCard icon="📦" label="Active Products" value={stats?.activeProducts ?? '—'} />
-        <StatCard icon="👥" label="Total Customers" value={stats?.totalUsers ?? '—'} />
+        <StatCard icon="⏳" label="Pending" value={stats?.pendingOrders || 0} />
+        <StatCard icon="📦" label="Products" value={stats?.activeProducts ?? '—'} />
+        <StatCard icon="👥" label="Customers" value={stats?.totalUsers ?? '—'} />
       </div>
 
       <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 16 }}>
-        <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--navy)' }}>Recent Orders</h3>
+        <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--navy)' }}>Recent Orders</h3>
           <Link to="/admin/orders" style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600 }}>View all →</Link>
         </div>
         {orders.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--muted)' }}>
-            <div style={{ fontSize: 40, marginBottom: 8 }}>🧾</div>
-            <p>No orders yet</p>
+          <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--muted)' }}>
+            <div style={{ fontSize: 36, marginBottom: 8 }}>🧾</div><p>No orders yet</p>
           </div>
         ) : (
-          <div style={{ overflow: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520 }}>
               <thead>
                 <tr style={{ background: 'var(--gray)' }}>
-                  {['Order #', 'Customer', 'Items', 'Total', 'Status', 'Date'].map(h => (
-                    <th key={h} style={{ textAlign: 'left', padding: '10px 16px', fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</th>
+                  {['Order #', 'Customer', 'Total', 'Status', 'Date'].map(h => (
+                    <th key={h} style={{ textAlign: 'left', padding: '9px 14px', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.4 }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {orders.map((o) => {
+                {orders.map(o => {
                   const [bg, fg] = STATUS_COLORS[o.status] || ['#F3F4F6', '#374151'];
                   return (
                     <tr key={o._id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 700, color: 'var(--navy)' }}>{o.orderNumber}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13 }}>{o.customerInfo.firstName} {o.customerInfo.lastName}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--muted)' }}>{o.items.length} item{o.items.length !== 1 ? 's' : ''}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 700 }}>${o.total.toFixed(2)}</td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: bg, color: fg }}>{o.status}</span>
+                      <td style={{ padding: '11px 14px', fontSize: 13, fontWeight: 700, color: 'var(--navy)', whiteSpace: 'nowrap' }}>{o.orderNumber}</td>
+                      <td style={{ padding: '11px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>{o.customerInfo.firstName} {o.customerInfo.lastName}</td>
+                      <td style={{ padding: '11px 14px', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>${o.total.toFixed(2)}</td>
+                      <td style={{ padding: '11px 14px' }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: bg, color: fg, whiteSpace: 'nowrap' }}>{o.status}</span>
                       </td>
-                      <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--muted)' }}>{new Date(o.createdAt).toLocaleDateString()}</td>
+                      <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{new Date(o.createdAt).toLocaleDateString()}</td>
                     </tr>
                   );
                 })}

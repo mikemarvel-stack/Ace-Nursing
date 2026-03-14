@@ -100,7 +100,7 @@ export default function ProductPage() {
       </div>
 
       <div className="container" style={{ paddingTop: 48 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: 52, alignItems: 'start', marginBottom: 64 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: 52, alignItems: 'start', marginBottom: 64 }} className="product-detail-grid">
 
           {/* ── Cover ─────────────────────────────────────────────────────── */}
           <div>
@@ -118,7 +118,7 @@ export default function ProductPage() {
             </div>
 
             {/* Specs grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }} className="specs-grid">
               {[['📄', 'Format', 'PDF Download'], ['📖', 'Pages', `${product.pages || 0} pages`], ['📥', 'Access', 'Instant']].map(([e, l, v]) => (
                 <div key={l} style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 12px', textAlign: 'center' }}>
                   <div style={{ fontSize: 22, marginBottom: 5 }}>{e}</div>
@@ -172,7 +172,7 @@ export default function ProductPage() {
             </div>
 
             {/* CTAs */}
-            <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
               <button className="btn btn-primary btn-lg" style={{ flex: 1 }} onClick={handleAddToCart}>
                 🛒 Add to Cart
               </button>
