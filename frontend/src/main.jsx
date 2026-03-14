@@ -18,6 +18,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminProducts from './pages/admin/AdminProducts';
 import AdminUpload from './pages/admin/AdminUpload';
 import AdminOrders from './pages/admin/AdminOrders';
+import AdminNotifications from './pages/admin/AdminNotifications';
 import { useAuthStore } from './store';
 import ContactPage from './pages/ContactPage';
 import FAQPage from './pages/FAQPage';
@@ -94,6 +95,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path="products" element={<AdminProducts />} />
             <Route path="upload" element={<AdminUpload />} />
             <Route path="orders" element={<AdminOrders />} />
+            <Route path="notifications" element={<AdminNotifications />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

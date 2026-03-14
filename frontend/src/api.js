@@ -102,4 +102,12 @@ export const ordersAPI = {
   update: (id, data) => api.patch(`/orders/${id}`, data),
 };
 
+// ─── Notifications API ────────────────────────────────────────────────────────────
+export const notificationsAPI = {
+  getAll: () => api.get('/notifications'),
+  markRead: (id) => api.patch(`/notifications/${id}/read`),
+  markAllRead: () => api.patch('/notifications/read-all'),
+  delete: (id) => api.delete(`/notifications/${id}`),
+};
+
 export default api;

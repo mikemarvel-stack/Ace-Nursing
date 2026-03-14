@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const { protect, signToken } = require('../middleware/auth');
 const { sendWelcomeEmail, sendPasswordResetEmail } = require('../utils/email');
+const { createNotification } = require('../utils/notifications');
 const rateLimit = require('express-rate-limit');
 
 const setupAdminLimiter = rateLimit({
@@ -33,6 +34,15 @@ router.post('/register', async (req, res, next) => {
 
     // Fire-and-forget welcome email
     sendWelcomeEmail({ user }).catch(console.error);
+
+    // Notify admin
+    createNotification({
+      type: 'new_user',
+      title: 'New User Registered',
+      message: `${user.firstName} ${user.lastName} (${user.email}) just created an account.`,
+      link: '/admin',
+      meta: { userId: user._id, email: user.email, country: user.country },
+    });
 
     sendAuthResponse(res, user, 201);
   } catch (err) {

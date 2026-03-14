@@ -19,7 +19,7 @@ export default function AdminOrders() {
 
   const fetchOrders = () => {
     setLoading(true);
-    ordersAPI.getAll({ search, status: statusFilter, limit: 50 })
+    ordersAPI.getAll({ search, status: statusFilter, limit: 100 })
       .then(res => setOrders(res.data.orders))
       .catch(() => toast.error('Failed to load orders'))
       .finally(() => setLoading(false));

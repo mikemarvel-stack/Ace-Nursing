@@ -1,5 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '../store';
+import { notificationsAPI } from '../api';
 import toast from 'react-hot-toast';
 
 const LINKS = [
@@ -7,11 +9,24 @@ const LINKS = [
   { to: '/admin/upload', label: 'Upload Material', icon: '⬆️', end: false },
   { to: '/admin/products', label: 'Manage Products', icon: '📦', end: false },
   { to: '/admin/orders', label: 'Orders', icon: '🧾', end: false },
+  { to: '/admin/notifications', label: 'Notifications', icon: '🔔', end: false },
 ];
 
 export default function AdminLayout() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    notificationsAPI.getAll()
+      .then(res => setUnreadCount(res.data.unreadCount))
+      .catch(() => {});
+    // Poll every 60s
+    const interval = setInterval(() => {
+      notificationsAPI.getAll().then(res => setUnreadCount(res.data.unreadCount)).catch(() => {});
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -47,6 +62,11 @@ export default function AdminLayout() {
               })}>
               <span style={{ fontSize: 16 }}>{l.icon}</span>
               {l.label}
+              {l.to === '/admin/notifications' && unreadCount > 0 && (
+                <span style={{ marginLeft: 'auto', background: '#DC2626', color: '#fff', borderRadius: 20, fontSize: 10, fontWeight: 700, padding: '1px 7px', minWidth: 18, textAlign: 'center' }}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>

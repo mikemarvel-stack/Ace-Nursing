@@ -8,6 +8,7 @@ const { protect, optionalAuth } = require('../middleware/auth');
 const { createPayPalOrder, capturePayPalOrder } = require('../config/paypal');
 const { getSignedDownloadUrl } = require('../utils/s3');
 const { sendOrderConfirmation, sendAdminOrderAlert } = require('../utils/email');
+const { createNotification } = require('../utils/notifications');
 
 // ─── POST /api/payments/paypal/create-order ───────────────────────────────────
 // Creates a PayPal order and returns the PayPal order ID for the frontend SDK
@@ -169,6 +170,15 @@ router.post('/paypal/capture', optionalAuth, async (req, res, next) => {
       .then(() => Order.findByIdAndUpdate(order._id, { downloadEmailSent: true }).catch(() => {}))
       .catch(console.error);
     sendAdminOrderAlert({ order }).catch(console.error);
+
+    // Notify admin
+    createNotification({
+      type: 'new_order',
+      title: 'New Order Received',
+      message: `${order.customerInfo.firstName} ${order.customerInfo.lastName} placed order ${order.orderNumber} for $${order.total.toFixed(2)}.`,
+      link: `/admin/orders`,
+      meta: { orderId: order._id, orderNumber: order.orderNumber, total: order.total, email: order.customerInfo.email },
+    });
 
     res.json({
       success: true,
