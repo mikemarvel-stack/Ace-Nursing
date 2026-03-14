@@ -1,8 +1,22 @@
 import axios from 'axios';
 import { useAuthStore } from './store';
 
+const ALLOWED_API_ORIGINS = new Set([
+  window.location.origin,
+  'http://localhost:5000',
+  'http://localhost:3000',
+]);
+
+const rawBaseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+// Validate baseURL origin against allowlist to prevent SSRF-style misconfiguration
+const parsedBase = new URL(rawBaseURL, window.location.origin);
+if (!ALLOWED_API_ORIGINS.has(parsedBase.origin) && import.meta.env.PROD) {
+  throw new Error(`Blocked unsafe API base URL: ${rawBaseURL}`);
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: rawBaseURL,
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
 });

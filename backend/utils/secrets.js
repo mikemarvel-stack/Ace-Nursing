@@ -35,8 +35,8 @@ async function loadSecrets({ secretName, region } = {}) {
     }
 
     Object.keys(secrets).forEach(key => {
-      // Do not override explicit env vars
-      if (process.env[key] === undefined) {
+      // Do not override explicit env vars (use `in` to avoid string "undefined" assignment)
+      if (!(key in process.env)) {
         process.env[key] = String(secrets[key]);
       }
     });

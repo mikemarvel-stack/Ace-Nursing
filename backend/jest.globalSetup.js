@@ -5,10 +5,12 @@ let mongoServer;
 
 module.exports = async () => {
   mongoServer = await MongoMemoryServer.create();
-  process.env.MONGODB_URI = mongoServer.getUri();
+  const uri = mongoServer.getUri();
+  // Assign explicitly as a string to avoid env var being set to "undefined"
+  process.env.MONGODB_URI = String(uri);
   global.__MONGO_SERVER__ = mongoServer;
 
-  await mongoose.connect(process.env.MONGODB_URI);
+  await mongoose.connect(uri);
   const collections = await mongoose.connection.db.collections();
   for (const col of collections) await col.deleteMany({});
   await mongoose.disconnect();
