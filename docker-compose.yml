@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: acenursing_mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: acenursing
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: acenursing_backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./backend/.env
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/acenursing
+    depends_on:
+      - mongo
+    volumes:
+      - ./backend:/app
+      - backend_node_modules:/app/node_modules
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: acenursing_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./frontend/.env
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+
+volumes:
+  mongo_data:
+  backend_node_modules:
+  frontend_node_modules:
