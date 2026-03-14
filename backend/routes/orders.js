@@ -41,28 +41,29 @@ router.get('/', async (req, res, next) => {
 // ─── GET /api/orders/stats ────────────────────────────────────────────────────
 router.get('/stats', async (req, res, next) => {
   try {
-    const [totalOrders, revenue, pending, thisMonth] = await Promise.all([
+    const Product = require('../models/Product');
+    const User = require('../models/User');
+    const [totalOrders, revenue, pending, thisMonth, activeProducts, totalUsers] = await Promise.all([
       Order.countDocuments({ status: 'completed' }),
       Order.aggregate([
         { $match: { status: 'completed' } },
         { $group: { _id: null, total: { $sum: '$total' } } },
       ]),
-      Order.countDocuments({ status: 'pending' }),
+      Order.countDocuments({ status: { $in: ['pending', 'processing'] } }),
       Order.aggregate([
-        {
-          $match: {
-            status: 'completed',
-            createdAt: { $gte: new Date(new Date().setDate(1)) },
-          },
-        },
+        { $match: { status: 'completed', createdAt: { $gte: new Date(new Date().setDate(1)) } } },
         { $group: { _id: null, total: { $sum: '$total' }, count: { $sum: 1 } } },
       ]),
+      Product.countDocuments({ isActive: true }),
+      User.countDocuments({ role: 'customer' }),
     ]);
 
     res.json({
       totalOrders,
       totalRevenue: revenue[0]?.total || 0,
       pendingOrders: pending,
+      activeProducts,
+      totalUsers,
       thisMonth: {
         revenue: thisMonth[0]?.total || 0,
         orders: thisMonth[0]?.count || 0,

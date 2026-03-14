@@ -24,6 +24,7 @@ const sendAuthResponse = (res, user, statusCode = 200) => {
 router.post('/register', async (req, res, next) => {
   try {
     const { firstName, lastName, email, password, phone, country } = req.body;
+    // Strip role — never allow self-assignment of admin
 
     const existing = await User.findOne({ email: email?.toLowerCase() });
     if (existing) {

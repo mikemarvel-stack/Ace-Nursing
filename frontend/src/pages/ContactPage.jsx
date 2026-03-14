@@ -1,12 +1,23 @@
 import { useState } from 'react';
+import api from '../api';
+import toast from 'react-hot-toast';
 
 export default function ContactPage() {
   const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    setSent(true);
+    setLoading(true);
+    try {
+      await api.post('/notifications/contact', form);
+      setSent(true);
+    } catch {
+      toast.error('Failed to send message. Please email us directly at support@acenursing.com');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -32,7 +43,7 @@ export default function ContactPage() {
         </div>
       ) : (
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }} className="name-grid">
             <div>
               <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--navy)', display: 'block', marginBottom: 6 }}>Name</label>
               <input className="input" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Your name" />
@@ -46,7 +57,7 @@ export default function ContactPage() {
             <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--navy)', display: 'block', marginBottom: 6 }}>Subject</label>
             <select className="input" value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} required>
               <option value="">Select a topic…</option>
-              <option>Order & Download Issue</option>
+              <option>Order &amp; Download Issue</option>
               <option>Refund Request</option>
               <option>Product Question</option>
               <option>Technical Support</option>
@@ -57,7 +68,9 @@ export default function ContactPage() {
             <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--navy)', display: 'block', marginBottom: 6 }}>Message</label>
             <textarea className="input" required rows={5} value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} placeholder="Describe your issue or question…" style={{ resize: 'vertical' }} />
           </div>
-          <button className="btn btn-gold" type="submit" style={{ alignSelf: 'flex-start', padding: '12px 32px' }}>Send Message</button>
+          <button className="btn btn-gold" type="submit" disabled={loading} style={{ alignSelf: 'flex-start', padding: '12px 32px' }}>
+            {loading ? <><span className="spinner" style={{ borderTopColor: '#fff', borderColor: 'rgba(255,255,255,0.3)' }} /> Sending…</> : 'Send Message'}
+          </button>
         </form>
       )}
     </div>

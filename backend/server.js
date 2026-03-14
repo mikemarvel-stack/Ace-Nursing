@@ -93,10 +93,8 @@ app.use('/api', globalLimiter);
 app.use('/api/auth', authLimiter);
 
 // ─── CSRF mitigation ─────────────────────────────────────────────────────────
-// Browsers cannot set Content-Type: application/json on cross-origin form
-// submissions, so enforcing it on mutating requests prevents CSRF attacks.
 app.use((req, res, next) => {
-  const mutating = ['POST', 'PUT', 'PATCH', 'DELETE'];
+  const mutating = ['POST', 'PUT', 'PATCH'];
   if (!mutating.includes(req.method)) return next();
   const ct = req.headers['content-type'] || '';
   if (!ct.includes('application/json') && !ct.includes('multipart/form-data')) {

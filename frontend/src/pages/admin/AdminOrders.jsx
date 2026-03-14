@@ -16,16 +16,20 @@ export default function AdminOrders() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [expanded, setExpanded] = useState(null);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const LIMIT = 20;
 
   const fetchOrders = () => {
     setLoading(true);
-    ordersAPI.getAll({ search, status: statusFilter, limit: 100 })
-      .then(res => setOrders(res.data.orders))
+    ordersAPI.getAll({ search, status: statusFilter, limit: LIMIT, page })
+      .then(res => { setOrders(res.data.orders); setTotal(res.data.total); })
       .catch(() => toast.error('Failed to load orders'))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchOrders(); }, [search, statusFilter]);
+  useEffect(() => { fetchOrders(); }, [search, statusFilter, page]);
+  useEffect(() => { setPage(1); }, [search, statusFilter]);
 
   const handleStatusUpdate = async (id, status) => {
     try {
@@ -41,7 +45,7 @@ export default function AdminOrders() {
     <div style={{ padding: 32 }}>
       <div style={{ marginBottom: 28 }}>
         <h1 className="serif" style={{ fontSize: 34, color: 'var(--navy)' }}>Orders</h1>
-        <p style={{ color: 'var(--muted)', fontSize: 14, marginTop: 2 }}>{orders.length} orders</p>
+        <p style={{ color: 'var(--muted)', fontSize: 14, marginTop: 2 }}>{total} orders</p>
       </div>
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 24, flexWrap: 'wrap' }}>
@@ -120,6 +124,15 @@ export default function AdminOrders() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {total > LIMIT && (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 24 }}>
+          <button className="btn btn-outline btn-sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>← Prev</button>
+          <span style={{ fontSize: 14, color: 'var(--muted)', padding: '0 12px' }}>Page {page} of {Math.ceil(total / LIMIT)}</span>
+          <button className="btn btn-outline btn-sm" onClick={() => setPage(p => p + 1)} disabled={page >= Math.ceil(total / LIMIT)}>Next →</button>
         </div>
       )}
     </div>
