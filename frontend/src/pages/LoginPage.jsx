@@ -95,7 +95,7 @@ export function RegisterPage() {
   return (
     <AuthCard title="Create Account" sub="Join 25,000+ nursing students">
       <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 14 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }} className="name-grid">
           <div>
             <label className="label">First Name</label>
             <input className="input" value={form.firstName} onChange={set('firstName')} placeholder="Jane" required />
@@ -123,7 +123,7 @@ export function RegisterPage() {
           {loading ? <><span className="spinner" /> Creating account…</> : 'Create Account →'}
         </button>
         <p style={{ fontSize: 12, color: 'var(--muted)', textAlign: 'center' }}>
-          By signing up, you agree to our <a href="#" style={{ color: 'var(--navy)' }}>Terms of Service</a> and <a href="#" style={{ color: 'var(--navy)' }}>Privacy Policy</a>.
+          By signing up, you agree to our <Link to="/info/terms-of-service" style={{ color: 'var(--navy)' }}>Terms of Service</Link> and <Link to="/info/privacy-policy" style={{ color: 'var(--navy)' }}>Privacy Policy</Link>.
         </p>
       </form>
       <p style={{ textAlign: 'center', marginTop: 16, fontSize: 14, color: 'var(--muted)' }}>

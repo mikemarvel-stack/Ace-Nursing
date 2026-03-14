@@ -115,7 +115,7 @@ export default function CheckoutPage() {
           ))}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 32, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 32, alignItems: 'start' }} className="checkout-grid">
           {/* ── Left Panel ─────────────────────────────────────────────── */}
           <div>
             {/* Step 1: Contact */}

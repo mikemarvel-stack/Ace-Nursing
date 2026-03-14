@@ -49,7 +49,7 @@ export default function HomePage() {
         <div style={{ position: 'absolute', right: 0, top: 0, width: '45%', height: '100%', opacity: 0.03, backgroundImage: 'repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 50%)', backgroundSize: '18px 18px' }} />
 
         <div className="container" style={{ padding: '88px 24px', position: 'relative', zIndex: 2 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, alignItems: 'center' }} className="hero-grid">
             <div className="animate-fade-up">
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(196,154,60,0.14)', border: '1px solid rgba(196,154,60,0.28)', borderRadius: 50, padding: '6px 18px', marginBottom: 28 }}>
                 <span style={{ width: 6, height: 6, background: '#C49A3C', borderRadius: '50%', display: 'inline-block', animation: 'pulse 2s infinite' }} />

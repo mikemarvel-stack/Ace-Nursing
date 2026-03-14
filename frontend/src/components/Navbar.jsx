@@ -219,6 +219,12 @@ export default function Navbar() {
             )}
           </button>
 
+          {/* Hamburger — mobile only */}
+          <button className="show-mobile" onClick={() => setMenuOpen(v => !v)}
+            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', width: 38, height: 38, borderRadius: 9, fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {menuOpen ? '✕' : '☰'}
+          </button>
+
           {/* Auth */}
           {isAuthenticated ? (
             <div style={{ position: 'relative' }}>
@@ -263,6 +269,35 @@ export default function Navbar() {
           )}
         </div>
       </div>
+
+      {/* Mobile Menu Drawer */}
+      {menuOpen && (
+        <div className="animate-fade-in" style={{ background: '#0C1B33', borderTop: '1px solid rgba(255,255,255,0.08)', padding: '16px 24px 24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {[
+              { label: 'Home', path: '/' },
+              { label: 'All Materials', path: '/shop' },
+              { label: 'Study Guides', path: '/shop/study-guides' },
+              { label: 'Flashcards', path: '/shop/flashcards' },
+              { label: 'Reference Cards', path: '/shop/reference-cards' },
+              { label: 'Checklists', path: '/shop/checklists' },
+              { label: 'Bundles', path: '/shop/bundles' },
+              ...(isAdmin() ? [{ label: '⚙️ Admin Panel', path: '/admin' }] : []),
+            ].map(item => (
+              <Link key={item.path} to={item.path}
+                style={{ color: location.pathname === item.path ? '#C49A3C' : 'rgba(255,255,255,0.85)', fontSize: 15, fontWeight: location.pathname === item.path ? 700 : 400, padding: '11px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                {item.label}
+              </Link>
+            ))}
+            {!isAuthenticated && (
+              <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                <Link to="/login" className="btn btn-outline" style={{ flex: 1, color: '#fff', borderColor: 'rgba(255,255,255,0.3)', fontSize: 14 }}>Log In</Link>
+                <Link to="/register" className="btn btn-gold" style={{ flex: 1, fontSize: 14 }}>Sign Up</Link>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
