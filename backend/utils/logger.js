@@ -26,20 +26,23 @@ const logger = createLogger({
     new transports.Console({
       format: format.combine(format.colorize({ all: true }), format.simple()),
     }),
-    new DailyRotateFile({
-      filename: path.join(logDir, 'app-%DATE%.log'),
-      datePattern: 'YYYY-MM-DD',
-      maxFiles: '14d',
-      zippedArchive: true,
-      level: 'info',
-    }),
-    new DailyRotateFile({
-      filename: path.join(logDir, 'error-%DATE%.log'),
-      datePattern: 'YYYY-MM-DD',
-      maxFiles: '30d',
-      zippedArchive: true,
-      level: 'error',
-    }),
+    // Skip file transports in test env to avoid open handle warnings
+    ...(process.env.NODE_ENV !== 'test' ? [
+      new DailyRotateFile({
+        filename: path.join(logDir, 'app-%DATE%.log'),
+        datePattern: 'YYYY-MM-DD',
+        maxFiles: '14d',
+        zippedArchive: true,
+        level: 'info',
+      }),
+      new DailyRotateFile({
+        filename: path.join(logDir, 'error-%DATE%.log'),
+        datePattern: 'YYYY-MM-DD',
+        maxFiles: '30d',
+        zippedArchive: true,
+        level: 'error',
+      }),
+    ] : []),
   ],
   exitOnError: false,
 });

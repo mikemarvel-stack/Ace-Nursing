@@ -1,6 +1,10 @@
 const { Resend } = require('resend');
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let _resend;
+const getResend = () => {
+  if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY);
+  return _resend;
+};
 
 const FROM = `${process.env.FROM_NAME || 'AceNursing'} <${process.env.FROM_EMAIL || 'orders@acenursing.com'}>`;
 
@@ -115,7 +119,7 @@ exports.sendOrderConfirmation = async ({ order, downloadLinks }) => {
     <p style="margin-top: 24px; font-size: 13px; color: #999;">Having issues downloading? Contact us at support@acenursing.com and we'll help immediately.</p>
   `;
 
-  return resend.emails.send({
+  return getResend().emails.send({
     from: FROM,
     to: order.customerInfo.email,
     subject: `✅ Your AceNursing Materials Are Ready – Order #${order.orderNumber}`,
@@ -135,7 +139,7 @@ exports.sendWelcomeEmail = async ({ user }) => {
     <p style="font-size: 13px; color: #999;">Your account email: ${user.email}</p>
   `;
 
-  return resend.emails.send({
+  return getResend().emails.send({
     from: FROM,
     to: user.email,
     subject: `Welcome to AceNursing, ${user.firstName}! 🎓`,
@@ -158,7 +162,7 @@ exports.sendPasswordResetEmail = async ({ user, resetUrl }) => {
     <p style="font-size: 12px; color: #999;">Link: ${resetUrl}</p>
   `;
 
-  return resend.emails.send({
+  return getResend().emails.send({
     from: FROM,
     to: user.email,
     subject: 'Reset Your AceNursing Password',
@@ -181,7 +185,7 @@ exports.sendAdminOrderAlert = async ({ order }) => {
     </div>
   `;
 
-  return resend.emails.send({
+  return getResend().emails.send({
     from: FROM,
     to: process.env.ADMIN_EMAIL,
     subject: `New Order #${order.orderNumber} – $${order.total.toFixed(2)}`,

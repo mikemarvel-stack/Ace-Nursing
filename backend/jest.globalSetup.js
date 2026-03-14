@@ -1,17 +1,17 @@
-const mongoose = require('mongoose');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 
-let mongoServer;
-
 module.exports = async () => {
-  mongoServer = await MongoMemoryServer.create();
+  const mongoServer = await MongoMemoryServer.create();
   const uri = mongoServer.getUri();
-  // Assign explicitly as a string to avoid env var being set to "undefined"
-  process.env.MONGODB_URI = String(uri);
-  global.__MONGO_SERVER__ = mongoServer;
 
-  await mongoose.connect(uri);
-  const collections = await mongoose.connection.db.collections();
-  for (const col of collections) await col.deleteMany({});
-  await mongoose.disconnect();
+  // Persist server instance and URI for teardown + worker access
+  global.__MONGO_SERVER__ = mongoServer;
+  process.env.MONGODB_URI = uri;
+
+  // Write URI to a temp file so Jest worker processes can read it
+  // (process.env mutations in globalSetup don't propagate to workers)
+  fs.writeFileSync(path.join(os.tmpdir(), 'jest-mongo-uri.txt'), uri);
 };
