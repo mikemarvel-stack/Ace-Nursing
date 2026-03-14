@@ -19,6 +19,9 @@ import AdminProducts from './pages/admin/AdminProducts';
 import AdminUpload from './pages/admin/AdminUpload';
 import AdminOrders from './pages/admin/AdminOrders';
 import { useAuthStore } from './store';
+import ContactPage from './pages/ContactPage';
+import FAQPage from './pages/FAQPage';
+import PolicyPage from './pages/PolicyPage';
 
 const paypalOptions = {
   'client-id': import.meta.env.VITE_PAYPAL_CLIENT_ID || 'sb',
@@ -37,7 +40,7 @@ function ProtectedRoute({ children, adminOnly = false }) {
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <PayPalScriptProvider options={paypalOptions} deferLoading={false}>
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Toaster
           position="top-right"
           toastOptions={{
@@ -65,6 +68,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path="/order-success" element={<OrderSuccessPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/faq" element={<FAQPage />} />
+            <Route path="/info/:slug" element={<PolicyPage />} />
             <Route
               path="/account"
               element={

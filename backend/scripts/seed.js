@@ -2,7 +2,7 @@
  * Seed script — run with: node scripts/seed.js
  * Populates the DB with sample products and an admin user.
  */
-require('dotenv').config({ path: '../.env' });
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 

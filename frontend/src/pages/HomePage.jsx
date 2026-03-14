@@ -68,11 +68,11 @@ export default function HomePage() {
                 <button className="btn btn-gold btn-lg" onClick={() => navigate('/shop')}>
                   Browse Materials →
                 </button>
-                <button className="btn" style={{ background: 'transparent', color: 'rgba(255,255,255,0.85)', border: '1.5px solid rgba(255,255,255,0.22)', padding: '14px 26px', borderRadius: 12, fontSize: 15 }}
+                <Link to="/shop" className="btn" style={{ background: 'transparent', color: 'rgba(255,255,255,0.85)', border: '1.5px solid rgba(255,255,255,0.22)', padding: '14px 26px', borderRadius: 12, fontSize: 15, textDecoration: 'none' }}
                   onMouseOver={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.55)'}
                   onMouseOut={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)'}>
-                  Free Sample Pack
-                </button>
+                  Browse Free Samples
+                </Link>
               </div>
 
               <div style={{ display: 'flex', gap: 40 }}>
@@ -83,14 +83,16 @@ export default function HomePage() {
             {/* Hero cards */}
             <div className="hide-mobile animate-fade-up" style={{ animationDelay: '0.15s' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                {[['📘','NCLEX-RN Guide','450 pages · Bestseller'], ['💊','Pharmacology','300+ drug profiles'], ['🫀','Anatomy Atlas','300 illustrations'], ['⚡','Flash Cards','800 high-yield cards']].map(([e, t, s]) => (
-                  <div key={t} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 16, padding: 24, backdropFilter: 'blur(8px)', transition: 'all 0.25s', cursor: 'pointer' }}
-                    onMouseOver={e => { e.currentTarget.style.background = 'rgba(196,154,60,0.08)'; e.currentTarget.style.borderColor = 'rgba(196,154,60,0.25)'; }}
-                    onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.09)'; }}>
-                    <div style={{ fontSize: 34, marginBottom: 12 }}>{e}</div>
-                    <div style={{ color: '#fff', fontSize: 14, fontWeight: 600, marginBottom: 5 }}>{t}</div>
-                    <div style={{ color: 'rgba(255,255,255,0.42)', fontSize: 12 }}>{s}</div>
-                  </div>
+                {[['📘','NCLEX-RN Guide','450 pages · Bestseller','study-guides'], ['💊','Pharmacology','300+ drug profiles','reference-cards'], ['🫀','Anatomy Atlas','300 illustrations','study-guides'], ['⚡','Flash Cards','800 high-yield cards','flashcards']].map(([em, t, s, cat]) => (
+                  <Link key={t} to={`/shop/${cat}`} style={{ textDecoration: 'none' }}>
+                    <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 16, padding: 24, backdropFilter: 'blur(8px)', transition: 'all 0.25s', cursor: 'pointer' }}
+                      onMouseOver={e => { e.currentTarget.style.background = 'rgba(196,154,60,0.08)'; e.currentTarget.style.borderColor = 'rgba(196,154,60,0.25)'; }}
+                      onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.09)'; }}>
+                      <div style={{ fontSize: 34, marginBottom: 12 }}>{em}</div>
+                      <div style={{ color: '#fff', fontSize: 14, fontWeight: 600, marginBottom: 5 }}>{t}</div>
+                      <div style={{ color: 'rgba(255,255,255,0.42)', fontSize: 12 }}>{s}</div>
+                    </div>
+                  </Link>
                 ))}
               </div>
             </div>
