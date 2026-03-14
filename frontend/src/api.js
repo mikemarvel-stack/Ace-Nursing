@@ -5,6 +5,7 @@ const ALLOWED_API_ORIGINS = new Set([
   window.location.origin,
   'http://localhost:5000',
   'http://localhost:3000',
+  'https://acenursing-backend.onrender.com',
 ]);
 
 const rawBaseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
