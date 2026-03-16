@@ -1,10 +1,9 @@
 const Notification = require('../models/Notification');
 
-async function createNotification({ type, title, message, link, meta }) {
+async function createNotification({ type, title, message, link, meta, userId = null }) {
   try {
-    await Notification.create({ type, title, message, link, meta });
+    await Notification.create({ type, title, message, link, meta, userId });
   } catch (err) {
-    // Non-fatal — never crash the main request
     console.error('Failed to create notification:', err.message);
   }
 }

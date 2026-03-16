@@ -196,12 +196,7 @@ cd backend
 npm run seed
 ```
 
-Creates 12 sample products and a default admin account:
-
-| Field | Value |
-|---|---|
-| Email | admin@acenursing.com |
-| Password | Admin@acenursing2025 |
+Creates 12 sample products and a default admin account. The credentials are printed to the console when the seed script runs.
 
 > ⚠️ Change the admin password immediately after first login. The seed script refuses to run when `NODE_ENV=production`.
 

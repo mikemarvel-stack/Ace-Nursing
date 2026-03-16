@@ -158,13 +158,26 @@ router.post('/paypal/capture', optionalAuth, async (req, res, next) => {
       .then(() => Order.findByIdAndUpdate(order._id, { downloadEmailSent: true }).catch(() => {}))
       .catch(console.error);
     sendAdminOrderAlert({ order }).catch(console.error);
+    // Admin notification
     createNotification({
       type: 'new_order',
       title: 'New Order Received',
       message: `${order.customerInfo.firstName} ${order.customerInfo.lastName} placed order ${order.orderNumber} for $${order.total.toFixed(2)}.`,
       link: '/admin/orders',
       meta: { orderId: order._id, orderNumber: order.orderNumber, total: order.total, email: order.customerInfo.email },
+      userId: null,
     });
+    // User notification (only if logged in)
+    if (req.user) {
+      createNotification({
+        type: 'new_order',
+        title: 'Order Confirmed – #' + order.orderNumber,
+        message: `Your payment of $${order.total.toFixed(2)} was successful. Your files are ready to download.`,
+        link: '/account',
+        meta: { orderId: order._id, orderNumber: order.orderNumber, total: order.total },
+        userId: req.user._id,
+      });
+    }
 
     res.json({
       success: true,

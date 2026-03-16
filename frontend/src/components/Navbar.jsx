@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore, useCartStore } from '../store';
+import { notificationsAPI } from '../api';
 import toast from 'react-hot-toast';
 
 export default function Navbar() {
@@ -13,6 +14,36 @@ export default function Navbar() {
   const [materialsSearch, setMaterialsSearch] = useState('');
   const [materialsHighlight, setMaterialsHighlight] = useState(0);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifs, setNotifs] = useState([]);
+  const [notifUnread, setNotifUnread] = useState(0);
+
+  // Poll user notifications every 60s when logged in
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const load = () => {
+      notificationsAPI.getMine()
+        .then(res => { setNotifs(res.data.notifications); setNotifUnread(res.data.unreadCount); })
+        .catch(() => {});
+    };
+    load();
+    const id = setInterval(load, 60000);
+    return () => clearInterval(id);
+  }, [isAuthenticated]);
+
+  const handleMarkNotifRead = async (n) => {
+    if (!n.read) {
+      await notificationsAPI.markMineRead(n._id).catch(() => {});
+      setNotifs(prev => prev.map(x => x._id === n._id ? { ...x, read: true } : x));
+      setNotifUnread(prev => Math.max(0, prev - 1));
+    }
+  };
+
+  const handleMarkAllNotifRead = async () => {
+    await notificationsAPI.markAllMineRead().catch(() => {});
+    setNotifs(prev => prev.map(x => ({ ...x, read: true })));
+    setNotifUnread(0);
+  };
 
   const cartCount = items.reduce((s, i) => s + i.qty, 0);
 
@@ -63,6 +94,7 @@ export default function Navbar() {
     setMaterialsOpen(false);
     setMaterialsSearch('');
     setMaterialsHighlight(0);
+    setNotifOpen(false);
   }, [location.pathname]);
 
   const handleLogout = () => {
@@ -207,6 +239,60 @@ export default function Navbar() {
 
         {/* Right Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Notification Bell — logged-in users only */}
+          {isAuthenticated && (
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => { setNotifOpen(v => !v); setUserMenuOpen(false); }}
+                style={{ position: 'relative', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', width: 38, height: 38, borderRadius: 10, fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+                onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                title="Notifications"
+              >
+                🔔
+                {notifUnread > 0 && (
+                  <span style={{ position: 'absolute', top: -5, right: -5, background: '#DC2626', color: '#fff', borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700 }}>
+                    {notifUnread > 9 ? '9+' : notifUnread}
+                  </span>
+                )}
+              </button>
+
+              {notifOpen && (
+                <div className="animate-fade-in" style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', background: '#fff', border: '1px solid var(--border)', borderRadius: 14, width: 320, maxHeight: 420, overflowY: 'auto', boxShadow: 'var(--shadow-lg)', zIndex: 200 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px 10px', borderBottom: '1px solid var(--border)' }}>
+                    <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--navy)' }}>Notifications</span>
+                    {notifUnread > 0 && (
+                      <button onClick={handleMarkAllNotifRead} style={{ fontSize: 12, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Mark all read</button>
+                    )}
+                  </div>
+                  {notifs.length === 0 ? (
+                    <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
+                      <div style={{ fontSize: 32, marginBottom: 8 }}>🔔</div>
+                      No notifications yet
+                    </div>
+                  ) : notifs.map(n => (
+                    <div key={n._id}
+                      onClick={() => handleMarkNotifRead(n)}
+                      style={{ display: 'flex', gap: 10, padding: '12px 16px', background: n.read ? '#fff' : '#F0F6FF', borderBottom: '1px solid var(--border)', cursor: 'pointer', transition: 'background 0.15s' }}
+                      onMouseOver={e => e.currentTarget.style.background = n.read ? 'var(--gray)' : '#E0EDFF'}
+                      onMouseOut={e => e.currentTarget.style.background = n.read ? '#fff' : '#F0F6FF'}
+                    >
+                      <div style={{ fontSize: 20, flexShrink: 0, marginTop: 1 }}>
+                        {n.type === 'new_order' ? '🧾' : n.type === 'order_status' ? '🔄' : '🔔'}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 13, fontWeight: n.read ? 500 : 700, color: 'var(--navy)', marginBottom: 2, lineHeight: 1.3 }}>{n.title}</p>
+                        <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.4 }}>{n.message}</p>
+                        <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>{new Date(n.createdAt).toLocaleDateString()}</p>
+                      </div>
+                      {!n.read && <div style={{ width: 7, height: 7, background: 'var(--primary)', borderRadius: '50%', flexShrink: 0, marginTop: 6 }} />}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Cart */}
           <button onClick={openCart} style={{ position: 'relative', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', padding: '8px 16px', borderRadius: 10, fontSize: 14, display: 'flex', alignItems: 'center', gap: 7, transition: 'all 0.2s' }}
             onMouseOver={e => e.currentTarget.style.background = 'rgba(196,154,60,0.2)'}

@@ -3,12 +3,11 @@ const router = express.Router();
 const Notification = require('../models/Notification');
 const { protect, restrictTo } = require('../middleware/auth');
 
-// POST /api/notifications/contact — public, creates a contact message notification
+// POST /api/notifications/contact — public
 router.post('/contact', async (req, res, next) => {
   try {
     const { name, email, phone, subject, message } = req.body;
     if (!name || !email || !message) return res.status(400).json({ error: 'Name, email and message are required.' });
-    // Server-side length guards
     if (name.length > 100 || email.length > 200 || (phone && phone.length > 30) || message.length > 5000) {
       return res.status(400).json({ error: 'Input exceeds maximum allowed length.' });
     }
@@ -18,19 +17,53 @@ router.post('/contact', async (req, res, next) => {
       message: `${email}${phone ? ` · ${phone}` : ''} — ${message.slice(0, 300)}${message.length > 300 ? '…' : ''}`,
       link: '/admin/notifications',
       meta: { name, email, phone: phone || '', subject: subject || '', message },
+      userId: null,
     });
     res.json({ success: true });
   } catch (err) { next(err); }
 });
 
+// ── User-facing notifications (JWT required) ──────────────────────────────────
+
+// GET /api/notifications/mine — logged-in user's own notifications
+router.get('/mine', protect, async (req, res, next) => {
+  try {
+    const [notifications, unreadCount] = await Promise.all([
+      Notification.find({ userId: req.user._id }).sort('-createdAt').limit(30),
+      Notification.countDocuments({ userId: req.user._id, read: false }),
+    ]);
+    res.json({ notifications, unreadCount });
+  } catch (err) { next(err); }
+});
+
+// PATCH /api/notifications/mine/:id/read
+router.patch('/mine/:id/read', protect, async (req, res, next) => {
+  try {
+    await Notification.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user._id },
+      { read: true }
+    );
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
+// PATCH /api/notifications/mine/read-all
+router.patch('/mine/read-all', protect, async (req, res, next) => {
+  try {
+    await Notification.updateMany({ userId: req.user._id, read: false }, { read: true });
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
+// ── Admin-only notifications ──────────────────────────────────────────────────
 router.use(protect, restrictTo('admin'));
 
-// GET /api/notifications — latest 50, unread count
+// GET /api/notifications — admin notifications only (userId: null)
 router.get('/', async (req, res, next) => {
   try {
     const [notifications, unreadCount] = await Promise.all([
-      Notification.find().sort('-createdAt').limit(50),
-      Notification.countDocuments({ read: false }),
+      Notification.find({ userId: null }).sort('-createdAt').limit(50),
+      Notification.countDocuments({ userId: null, read: false }),
     ]);
     res.json({ notifications, unreadCount });
   } catch (err) { next(err); }
@@ -39,7 +72,7 @@ router.get('/', async (req, res, next) => {
 // PATCH /api/notifications/read-all
 router.patch('/read-all', async (req, res, next) => {
   try {
-    await Notification.updateMany({ read: false }, { read: true });
+    await Notification.updateMany({ userId: null, read: false }, { read: true });
     res.json({ success: true });
   } catch (err) { next(err); }
 });

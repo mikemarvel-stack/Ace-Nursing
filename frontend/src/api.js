@@ -111,6 +111,10 @@ export const notificationsAPI = {
   markRead: (id) => api.patch(`/notifications/${id}/read`),
   markAllRead: () => api.patch('/notifications/read-all'),
   delete: (id) => api.delete(`/notifications/${id}`),
+  // User-facing
+  getMine: () => api.get('/notifications/mine'),
+  markMineRead: (id) => api.patch(`/notifications/mine/${id}/read`),
+  markAllMineRead: () => api.patch('/notifications/mine/read-all'),
 };
 
 export default api;

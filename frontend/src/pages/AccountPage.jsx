@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store';
-import { authAPI, paymentAPI } from '../api';
+import { authAPI, paymentAPI, notificationsAPI } from '../api';
 
 export default function AccountPage() {
   const { user, setAuth, logout } = useAuthStore();
@@ -10,6 +10,8 @@ export default function AccountPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('orders');
+  const [notifs, setNotifs] = useState([]);
+  const [notifUnread, setNotifUnread] = useState(0);
   const [form, setForm] = useState({ firstName: user?.firstName || '', lastName: user?.lastName || '', phone: user?.phone || '', country: user?.country || '' });
   const [saving, setSaving] = useState(false);
 
@@ -18,7 +20,23 @@ export default function AccountPage() {
       .then(res => setOrders(res.data.orders))
       .catch(() => {})
       .finally(() => setLoading(false));
+    notificationsAPI.getMine()
+      .then(res => { setNotifs(res.data.notifications); setNotifUnread(res.data.unreadCount); })
+      .catch(() => {});
   }, []);
+
+  const handleMarkNotifRead = async (id) => {
+    await notificationsAPI.markMineRead(id).catch(() => {});
+    setNotifs(prev => prev.map(n => n._id === id ? { ...n, read: true } : n));
+    setNotifUnread(prev => Math.max(0, prev - 1));
+  };
+
+  const handleMarkAllNotifRead = async () => {
+    await notificationsAPI.markAllMineRead().catch(() => {});
+    setNotifs(prev => prev.map(n => ({ ...n, read: true })));
+    setNotifUnread(0);
+    toast.success('All notifications marked as read');
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -56,10 +74,12 @@ export default function AccountPage() {
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 4, marginBottom: 28, background: 'var(--gray)', borderRadius: 12, padding: 4, width: 'fit-content' }} className="account-tabs">
-          {['orders', 'profile'].map(t => (
+          {['orders', 'notifications', 'profile'].map(t => (
             <button key={t} onClick={() => setTab(t)}
-              style={{ padding: '9px 22px', borderRadius: 9, border: 'none', background: tab === t ? 'var(--navy)' : 'transparent', color: tab === t ? '#fff' : 'var(--muted)', fontWeight: tab === t ? 700 : 400, fontSize: 14, cursor: 'pointer', textTransform: 'capitalize', transition: 'all 0.2s' }}>
-              {t === 'orders' ? '🧾 My Orders' : '👤 Profile'}
+              style={{ padding: '9px 22px', borderRadius: 9, border: 'none', background: tab === t ? 'var(--navy)' : 'transparent', color: tab === t ? '#fff' : 'var(--muted)', fontWeight: tab === t ? 700 : 400, fontSize: 14, cursor: 'pointer', textTransform: 'capitalize', transition: 'all 0.2s', position: 'relative' }}>
+              {t === 'orders' ? '🧾 My Orders' : t === 'notifications' ? (
+                <>🔔 Notifications{notifUnread > 0 && <span style={{ marginLeft: 6, background: '#DC2626', color: '#fff', borderRadius: 10, fontSize: 11, fontWeight: 700, padding: '1px 6px' }}>{notifUnread}</span>}</>
+              ) : '👤 Profile'}
             </button>
           ))}
         </div>
@@ -117,6 +137,49 @@ export default function AccountPage() {
                         </div>
                       ))}
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Notifications Tab */}
+        {tab === 'notifications' && (
+          <div style={{ maxWidth: 680 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+              <p style={{ color: 'var(--muted)', fontSize: 14 }}>{notifUnread > 0 ? `${notifUnread} unread` : 'All caught up'}</p>
+              {notifUnread > 0 && (
+                <button className="btn btn-outline btn-sm" onClick={handleMarkAllNotifRead}>✓ Mark all read</button>
+              )}
+            </div>
+            {notifs.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '60px 24px', background: '#fff', borderRadius: 16, border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 48, marginBottom: 12 }}>🔔</div>
+                <h3 style={{ color: 'var(--navy)', fontSize: 18, marginBottom: 8 }}>No notifications yet</h3>
+                <p style={{ color: 'var(--muted)' }}>Order confirmations and updates will appear here</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {notifs.map(n => (
+                  <div key={n._id} style={{ display: 'flex', gap: 14, padding: '16px 18px', background: n.read ? '#fff' : '#F0F6FF', border: `1px solid ${n.read ? 'var(--border)' : '#C0D4F0'}`, borderRadius: 12, position: 'relative' }}>
+                    <div style={{ fontSize: 22, flexShrink: 0 }}>
+                      {n.type === 'new_order' ? '🧾' : n.type === 'order_status' ? '🔄' : '🔔'}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
+                        <p style={{ fontWeight: n.read ? 500 : 700, fontSize: 14, color: 'var(--navy)' }}>{n.title}</p>
+                        <span style={{ fontSize: 11, color: 'var(--muted)', flexShrink: 0 }}>{new Date(n.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>{n.message}</p>
+                      {!n.read && (
+                        <button onClick={() => handleMarkNotifRead(n._id)}
+                          style={{ marginTop: 8, fontSize: 12, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}>
+                          Mark as read
+                        </button>
+                      )}
+                    </div>
+                    {!n.read && <div style={{ position: 'absolute', top: 16, right: 16, width: 8, height: 8, background: 'var(--primary)', borderRadius: '50%' }} />}
                   </div>
                 ))}
               </div>
