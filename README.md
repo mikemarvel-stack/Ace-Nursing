@@ -1,310 +1,518 @@
-# 🎓 AceNursing – Full-Stack E-Commerce Platform
+# AceNursing
 
-Premium nursing study materials platform with instant PDF delivery, PayPal checkout, AWS S3 storage, and a full admin panel.
+A full-stack e-commerce platform for premium nursing study materials. Students browse, purchase, and instantly download PDF study guides, flashcards, and reference materials. Payments are handled via PayPal, files are stored privately on AWS S3, and order confirmations with download links are delivered by email.
 
 ---
 
-## ⚡ Tech Stack
+## Table of Contents
+
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [Environment Variables](#environment-variables)
+  - [Seed the Database](#seed-the-database)
+  - [Run Locally](#run-locally)
+- [Docker](#docker)
+- [Testing](#testing)
+- [API Reference](#api-reference)
+- [PayPal Integration](#paypal-integration)
+- [AWS S3 Setup](#aws-s3-setup)
+- [Email Setup](#email-setup)
+- [Admin Panel](#admin-panel)
+- [Security](#security)
+- [Deployment](#deployment)
+- [Environment Variable Reference](#environment-variable-reference)
+
+---
+
+## Features
+
+**Customer-facing**
+- Browse and search nursing study materials by category, price, and rating
+- Slide-in cart with persistent state across sessions
+- 2-step checkout with PayPal (sandbox + live)
+- Instant PDF download after payment — files auto-download on the order confirmation page
+- Download links emailed to the customer and valid for 30 days
+- User accounts with order history and re-download access
+- Product reviews and ratings
+- Contact form, FAQ, and policy pages
+
+**Admin panel** (`/admin`)
+- Dashboard with revenue stats and recent orders
+- Upload products directly to AWS S3 (PDF + cover image)
+- Manage and edit the product catalogue
+- View and update order statuses
+- Real-time notifications for new orders, signups, and contact messages
+- Expand contact messages inline and reply via email in one click
+
+**Platform**
+- JWT authentication with role-based access control
+- Structured JSON logging with daily log rotation (Winston)
+- OpenTelemetry tracing support
+- AWS Secrets Manager integration for production secrets
+- GitHub Actions CI — backend tests + frontend build on every push
+- Docker Compose for local development and production
+
+---
+
+## Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
-| Frontend | React 18, React Router 6, Zustand, PayPal JS SDK |
-| Backend | Node.js, Express 4, MongoDB/Mongoose |
-| Payments | PayPal REST API (sandbox + live) |
-| Storage | AWS S3 (PDFs + cover images) |
-| Email | Resend (order confirmations + download links) |
-| Auth | JWT (HTTP headers) |
-| Deployment | Docker + Docker Compose / Nginx |
+|---|---|
+| Frontend | React 18, React Router 6, Zustand, Vite |
+| Payments | PayPal JS SDK (`@paypal/react-paypal-js`) + PayPal REST API |
+| Backend | Node.js 20, Express 4, Mongoose 8 |
+| Database | MongoDB (local or Atlas) |
+| Storage | AWS S3 — private bucket with signed URLs |
+| Email | Resend |
+| Auth | JWT (Bearer token, 7-day expiry) |
+| Logging | Winston + daily rotate file |
+| Tracing | OpenTelemetry (optional, OTLP HTTP export) |
+| CI | GitHub Actions |
+| Deployment | Render (backend) + Vercel (frontend) / Docker Compose |
 
 ---
 
-## 🚀 Quick Start (Local Dev)
+## Project Structure
 
-### 1. Clone & Install
+```
+acenursing/
+├── .github/
+│   └── workflows/
+│       └── ci.yml              # Backend tests + frontend build
+├── backend/
+│   ├── __tests__/              # Jest integration tests
+│   ├── config/
+│   │   ├── aws.js              # S3 client setup
+│   │   └── paypal.js           # PayPal REST API helpers
+│   ├── middleware/
+│   │   ├── auth.js             # protect / restrictTo / optionalAuth / signToken
+│   │   └── requestLogger.js    # Structured HTTP request logging
+│   ├── models/
+│   │   ├── User.js             # User schema, bcrypt hashing, purchases
+│   │   ├── Product.js          # Product schema, auto-slug, reviews
+│   │   ├── Order.js            # Order schema, auto order number
+│   │   └── Notification.js     # Admin notification schema
+│   ├── routes/
+│   │   ├── auth.js             # Register, login, profile, password reset
+│   │   ├── products.js         # CRUD, search, pagination, reviews
+│   │   ├── payments.js         # PayPal create/capture, download tokens, signed URLs
+│   │   ├── orders.js           # Admin order management
+│   │   ├── upload.js           # S3 file upload (PDF + image)
+│   │   └── notifications.js    # Admin notifications + public contact endpoint
+│   ├── scripts/
+│   │   └── seed.js             # Seed 12 sample products + admin user
+│   ├── utils/
+│   │   ├── email.js            # Resend email templates
+│   │   ├── logger.js           # Winston logger
+│   │   ├── notifications.js    # createNotification helper
+│   │   ├── s3.js               # S3 upload / signed URL / delete helpers
+│   │   ├── secrets.js          # AWS Secrets Manager loader
+│   │   └── telemetry.js        # OpenTelemetry init/shutdown
+│   ├── .env.example
+│   ├── Dockerfile
+│   └── server.js               # Express app entry point
+│
+└── frontend/
+    ├── public/
+    │   └── favicon.svg
+    └── src/
+        ├── components/
+        │   ├── Navbar.jsx          # Sticky nav, cart badge, auth state
+        │   ├── Footer.jsx          # Links, social, payment badges
+        │   ├── Layout.jsx          # Public page wrapper (Navbar + Footer)
+        │   ├── CartDrawer.jsx      # Slide-in cart
+        │   ├── ProductCard.jsx     # Shop grid card
+        │   └── AdminLayout.jsx     # Admin sidebar + topbar
+        ├── pages/
+        │   ├── HomePage.jsx        # Hero, featured products, testimonials
+        │   ├── ShopPage.jsx        # Full shop with search, filters, pagination
+        │   ├── ProductPage.jsx     # Product detail + reviews
+        │   ├── CheckoutPage.jsx    # 2-step checkout + PayPal Buttons
+        │   ├── OrderSuccessPage.jsx # Confirmation + auto-download + fallback fetch
+        │   ├── LoginPage.jsx       # Login + Register tabs
+        │   ├── AccountPage.jsx     # Order history + profile settings
+        │   ├── ContactPage.jsx     # Contact form → admin notifications
+        │   ├── FAQPage.jsx         # Frequently asked questions
+        │   ├── PolicyPage.jsx      # Privacy, terms, refund policies
+        │   └── admin/
+        │       ├── AdminDashboard.jsx   # Stats, revenue chart, recent orders
+        │       ├── AdminUpload.jsx      # Upload product files to S3
+        │       ├── AdminProducts.jsx    # Manage product catalogue
+        │       ├── AdminOrders.jsx      # View and update orders
+        │       └── AdminNotifications.jsx # Notifications with inline contact messages
+        ├── api.js          # Axios instance + all API method groups
+        ├── store.js        # Zustand cart store (persisted) + auth store
+        ├── main.jsx        # App entry — Router, PayPal Provider, ErrorBoundary
+        └── index.css       # Global styles and CSS design tokens
+```
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 20+
+- npm 9+
+- MongoDB (local instance or [MongoDB Atlas](https://www.mongodb.com/atlas))
+- A [PayPal Developer](https://developer.paypal.com) sandbox app
+- An [AWS account](https://aws.amazon.com) with an S3 bucket
+- A [Resend](https://resend.com) account with a verified domain
+
+### Installation
 
 ```bash
-# Install dependencies for backend + frontend
+git clone https://github.com/your-username/acenursing.git
+cd acenursing
 npm install
 ```
 
-> Tip: this runs `npm install` in both `backend/` and `frontend/` (via `postinstall`).
+This installs dependencies for both `backend/` and `frontend/` via the root `postinstall` script.
 
-### 2. Configure Environment
+### Environment Variables
 
-**Backend** — copy `.env.example` to `.env` and fill in:
+**Backend** — copy the example and fill in your values:
 
 ```bash
 cp backend/.env.example backend/.env
 ```
 
-Required variables:
-```env
-MONGODB_URI=mongodb://localhost:27017/acenursing
-JWT_SECRET=your_min_32_char_secret_here
-PAYPAL_CLIENT_ID=your_paypal_sandbox_client_id
-PAYPAL_CLIENT_SECRET=your_paypal_sandbox_secret
-PAYPAL_MODE=sandbox
-AWS_ACCESS_KEY_ID=your_aws_key
-AWS_SECRET_ACCESS_KEY=your_aws_secret
-AWS_REGION=us-east-1
-AWS_S3_BUCKET=acenursing-materials
-RESEND_API_KEY=re_your_key
-FROM_EMAIL=orders@acenursing.com
-FRONTEND_URL=http://localhost:3000
-ADMIN_SETUP_KEY=any_secret_string
+**Frontend** — create `frontend/.env`:
+
+```bash
+cp frontend/.env.example frontend/.env
 ```
 
-### Optional: AWS Secrets Manager
-If you want to keep secrets out of `.env`, you can load them from AWS Secrets Manager.
+See the full [Environment Variable Reference](#environment-variable-reference) at the bottom of this file.
 
-1. Set `USE_AWS_SECRETS=true` in your `.env`.
-2. Set `AWS_SECRETS_NAME` to the secret name (e.g. `acenursing/dev`).
-3. Provide AWS credentials via environment variables or IAM role.
-
-The app will merge secrets into `process.env` but will not override values already set explicitly in `.env`.
-
-**Frontend** — create `.env`:
-
-```env
-VITE_API_URL=http://localhost:5000/api
-VITE_PAYPAL_CLIENT_ID=your_paypal_sandbox_client_id
-```
-
-### 3. Seed the Database
+### Seed the Database
 
 ```bash
 cd backend
 npm run seed
 ```
 
-This creates 12 sample products and an admin account:
-- **Email:** admin@acenursing.com
-- **Password:** Admin@acenursing2025
+Creates 12 sample products and a default admin account:
 
-> ⚠️ Change the admin password immediately after first login!
+| Field | Value |
+|---|---|
+| Email | admin@acenursing.com |
+| Password | Admin@acenursing2025 |
 
-### 4. Start Development Servers
+> ⚠️ Change the admin password immediately after first login. The seed script refuses to run when `NODE_ENV=production`.
 
-#### Option A — npm dev (recommended)
-From the repo root, start both backend and frontend concurrently:
+### Run Locally
+
+Start both servers concurrently from the repo root:
 
 ```bash
 npm run dev
 ```
 
-Then:
-- Frontend: http://localhost:3000
-- API: http://localhost:5000/api
+| Service | URL |
+|---|---|
+| Frontend | http://localhost:3000 |
+| Backend API | http://localhost:5000/api |
+| Health check | http://localhost:5000/api/health |
 
-#### Option B — Docker dev
-If you prefer Docker, start everything with:
-
-```bash
-docker-compose up --build
-```
-
-> Tip: run `docker-compose down` to stop everything.
->
-> **Note:** the Compose setup now uses named volumes for `node_modules` to avoid missing dependencies when mounting the local source tree.
-
-#### Health check (use for monitoring / container health)
+Or run them separately:
 
 ```bash
-curl http://localhost:5000/api/health
+cd backend && npm run dev
+cd frontend && npm run dev
 ```
-
-> If you want to run each service separately, you can still run:
->
-> ```bash
-> cd backend && npm run dev
-> cd frontend && npm run dev
-> ```
 
 ---
 
-## 🐳 Docker Compose
+## Docker
 
 ```bash
-# Build and start all services
+# Build and start all services (backend + frontend + MongoDB)
 docker-compose up --build
 
 # Run in background
 docker-compose up -d
 
-# Seed database (after containers start)
+# Seed the database after containers start
 docker-compose exec backend node scripts/seed.js
 
-# Stop all
+# Stop everything
 docker-compose down
 ```
 
----
-
-## 📐 Project Structure
-
-```
-acenursing/
-├── backend/
-│   ├── config/
-│   │   ├── aws.js          # S3 client
-│   │   └── paypal.js       # PayPal API helpers
-│   ├── middleware/
-│   │   └── auth.js         # JWT protect / restrictTo
-│   ├── models/
-│   │   ├── User.js         # User schema + auth methods
-│   │   ├── Product.js      # Product schema + slug
-│   │   └── Order.js        # Order schema + order number
-│   ├── routes/
-│   │   ├── auth.js         # Register, login, profile
-│   │   ├── products.js     # CRUD + reviews
-│   │   ├── payments.js     # PayPal create/capture + downloads
-│   │   ├── orders.js       # Admin order management
-│   │   └── upload.js       # S3 file upload (PDF + image)
-│   ├── scripts/
-│   │   └── seed.js         # DB seed with sample data
-│   ├── utils/
-│   │   ├── email.js        # Resend email templates
-│   │   └── s3.js           # S3 upload/download helpers
-│   └── server.js           # Express app entry point
-│
-└── frontend/
-    └── src/
-        ├── components/
-        │   ├── Navbar.jsx        # Sticky nav with auth
-        │   ├── Footer.jsx        # Links, social, payments
-        │   ├── Layout.jsx        # Page wrapper
-        │   ├── CartDrawer.jsx    # Slide-in cart
-        │   ├── ProductCard.jsx   # Shop grid card
-        │   └── AdminLayout.jsx   # Admin sidebar layout
-        ├── pages/
-        │   ├── HomePage.jsx      # Hero, featured, testimonials
-        │   ├── ShopPage.jsx      # Full shop with filters
-        │   ├── ProductPage.jsx   # Detail + reviews
-        │   ├── CheckoutPage.jsx  # 2-step + PayPal Buttons
-        │   ├── OrderSuccessPage.jsx  # Confirmation + downloads
-        │   ├── LoginPage.jsx     # Login + Register
-        │   ├── AccountPage.jsx   # Orders + profile
-        │   └── admin/
-        │       ├── AdminDashboard.jsx  # Stats + recent orders
-        │       ├── AdminUpload.jsx     # Upload products to S3
-        │       ├── AdminProducts.jsx   # Manage product list
-        │       └── AdminOrders.jsx     # View + update orders
-        ├── api.js          # Axios + all API methods
-        ├── store.js        # Zustand cart + auth stores
-        ├── main.jsx        # React Router + PayPal Provider
-        └── index.css       # Global styles + design tokens
-```
+> The Compose setup uses named volumes for `node_modules` to avoid dependency issues when mounting the local source tree.
 
 ---
 
-## 🧪 Running Tests
+## Testing
 
 ### Backend
-
-From the repo root (or inside `backend/`):
 
 ```bash
 cd backend
 npm test
 ```
 
+Tests run against an in-memory MongoDB instance (via `mongodb-memory-server`) so no real database is needed. Coverage is collected automatically into `backend/coverage/`.
+
 ### CI
 
-A GitHub Actions workflow is included at `.github/workflows/ci.yml` that runs backend tests and builds the frontend on every push and pull request.
+GitHub Actions runs on every push and pull request to `main`:
 
-## 💳 PayPal Integration
+- **Backend job** — installs dependencies and runs Jest
+- **Frontend job** — installs dependencies and runs `vite build`
 
-### Sandbox Testing
-
-1. Go to [developer.paypal.com](https://developer.paypal.com)
-2. Create a sandbox app to get `client_id` and `secret`
-3. Use sandbox buyer account to test payments
-4. Test card: `4032039534213337` / any future expiry / any CVV
-
-### Go Live
-
-1. Change `PAYPAL_MODE=live` in `.env`
-2. Replace sandbox credentials with live ones from PayPal dashboard
-3. Update `VITE_PAYPAL_CLIENT_ID` with live client ID
+Workflow file: `.github/workflows/ci.yml`
 
 ---
 
-## ☁️ AWS S3 Setup
+## API Reference
 
-1. Create an S3 bucket (e.g., `acenursing-materials`)
-2. Set bucket policy to allow private reads (signed URLs for downloads)
-3. Create an IAM user with `AmazonS3FullAccess` (or scoped policy)
-4. Add credentials to `.env`
+All endpoints are prefixed with `/api`.
 
-### S3 Bucket Policy (restrict public access, use signed URLs):
+### Auth — `/api/auth`
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/register` | — | Create a new customer account |
+| POST | `/login` | — | Login, returns JWT |
+| POST | `/admin-login` | — | Admin-only login |
+| GET | `/me` | JWT | Get current user profile |
+| PATCH | `/update-profile` | JWT | Update name, email, phone |
+| POST | `/forgot-password` | — | Send password reset email |
+| POST | `/reset-password/:token` | — | Reset password with token |
+
+### Products — `/api/products`
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/` | — | List products (search, category, sort, pagination) |
+| GET | `/featured` | — | Get featured products |
+| GET | `/:id` | — | Get single product by ID or slug |
+| POST | `/` | Admin | Create product |
+| PATCH | `/:id` | Admin | Update product |
+| DELETE | `/:id` | Admin | Delete product |
+| POST | `/:id/reviews` | JWT | Add a review |
+| GET | `/admin/all` | Admin | Get all products including inactive |
+
+### Payments — `/api/payments`
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/paypal/create-order` | Optional | Create PayPal order + internal order record |
+| POST | `/paypal/capture` | Optional | Capture payment, generate download tokens |
+| GET | `/download/:token` | — | Validate token and redirect to signed S3 URL |
+| GET | `/orders` | JWT | Get current user's order history |
+
+### Orders — `/api/orders` (Admin)
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/` | Admin | List all orders with filters and pagination |
+| GET | `/stats` | Admin | Revenue and order count statistics |
+| GET | `/:id` | Admin | Get single order detail |
+| PATCH | `/:id` | Admin | Update order status |
+
+### Upload — `/api/upload` (Admin)
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/product-full` | Upload PDF + cover image together |
+| POST | `/pdf` | Upload PDF only |
+| POST | `/image` | Upload cover image only |
+| DELETE | `/file` | Delete a file from S3 by key |
+
+### Notifications — `/api/notifications`
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/contact` | — | Submit a contact form message |
+| GET | `/` | Admin | Get latest 50 notifications + unread count |
+| PATCH | `/:id/read` | Admin | Mark notification as read |
+| PATCH | `/read-all` | Admin | Mark all notifications as read |
+| DELETE | `/:id` | Admin | Delete a notification |
+
+---
+
+## PayPal Integration
+
+### Sandbox Testing
+
+1. Go to [developer.paypal.com](https://developer.paypal.com) and create a sandbox app
+2. Copy the `Client ID` and `Secret` into `backend/.env`
+3. Set `PAYPAL_MODE=sandbox`
+4. Use a sandbox buyer account to test the full checkout flow
+
+### Going Live
+
+1. Set `PAYPAL_MODE=live` in `backend/.env`
+2. Replace sandbox credentials with live credentials from the PayPal dashboard
+3. Update `VITE_PAYPAL_CLIENT_ID` in `frontend/.env` with the live client ID
+
+---
+
+## AWS S3 Setup
+
+1. Create a private S3 bucket (e.g. `acenursing-materials`) in your chosen region
+2. Block all public access on the bucket
+3. Create an IAM user with a scoped policy (see below) — do **not** use `AmazonS3FullAccess`
+4. Add the IAM credentials to `backend/.env`
+
+### Recommended IAM Policy
+
 ```json
 {
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "DenyPublicAccess",
-      "Effect": "Deny",
-      "Principal": "*",
-      "Action": "s3:GetObject",
-      "Resource": "arn:aws:s3:::acenursing-materials/*",
-      "Condition": {
-        "StringNotEquals": {
-          "aws:PrincipalArn": "arn:aws:iam::YOUR_ACCOUNT_ID:user/acenursing-api"
-        }
-      }
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": "arn:aws:s3:::acenursing-materials/*"
     }
   ]
 }
 ```
 
+Files are never publicly accessible. All downloads use pre-signed URLs that expire after 1 hour (download endpoint) or 30 days (emailed links).
+
+### Optional: AWS Secrets Manager
+
+To keep secrets out of `.env` entirely:
+
+1. Store your secrets as a JSON object in AWS Secrets Manager (e.g. secret name `acenursing/prod`)
+2. Set `USE_AWS_SECRETS=true` and `AWS_SECRETS_NAME=acenursing/prod` in `.env`
+3. Provide AWS credentials via environment variables or an IAM role
+
+The app merges Secrets Manager values into `process.env` at startup without overriding values already set in `.env`.
+
 ---
 
-## 📧 Email Setup (Resend)
+## Email Setup
 
 1. Sign up at [resend.com](https://resend.com)
-2. Add and verify your domain (e.g., `acenursing.com`)
-3. Create API key and add to `.env` as `RESEND_API_KEY`
+2. Add and verify your sending domain (e.g. `acenursing.com`)
+3. Create an API key and set it as `RESEND_API_KEY` in `backend/.env`
 4. Set `FROM_EMAIL=orders@acenursing.com`
 
-Emails sent:
-- ✅ Order confirmation with download links
-- 🎓 Welcome email on registration
-- 🔐 Password reset link
-- 📊 Admin new-order alert
+Emails sent automatically:
+
+| Trigger | Recipient | Content |
+|---|---|---|
+| Successful order | Customer | Order confirmation + download links |
+| New registration | Customer | Welcome email |
+| Password reset request | Customer | Reset link (expires 1 hour) |
+| New order | Admin | Order alert with summary |
 
 ---
 
-## 🔒 Security Features
+## Admin Panel
 
-- JWT authentication with 7-day expiry
-- Password hashing with bcrypt (cost factor 12)
-- Rate limiting (300 req/15min global, 20 req/15min auth)
-- MongoDB query sanitization (express-mongo-sanitize)
-- Helmet HTTP security headers
-- CORS restricted to frontend origin
-- Signed S3 URLs for private file downloads (30-day links)
-- Server-side price validation (never trust client-sent prices)
-- Admin role gating on all sensitive routes
+Access the admin panel at `/admin`. Requires an account with `role: admin`.
 
----
-
-## 🌐 Production Deployment
-
-### Environment
-- Set `NODE_ENV=production` 
-- Use a strong `JWT_SECRET` (min 32 chars, random)
-- Set `FRONTEND_URL` to your actual domain
-- Use `PAYPAL_MODE=live`
-
-### Recommended Hosting
-- **Backend:** Railway, Render, AWS EC2, DigitalOcean App Platform
-- **Frontend:** Vercel, Netlify, or Nginx on same server
-- **Database:** MongoDB Atlas (free tier available)
-- **Files:** AWS S3 (already integrated)
+| Page | Path | Description |
+|---|---|---|
+| Dashboard | `/admin` | Revenue stats, order counts, recent activity |
+| Products | `/admin/products` | Edit, activate/deactivate, delete products |
+| Upload | `/admin/upload` | Upload new products (PDF + cover image) to S3 |
+| Orders | `/admin/orders` | View all orders, update status |
+| Notifications | `/admin/notifications` | Orders, signups, contact messages with inline reply |
 
 ---
 
-## 📞 Support
+## Security
 
-Email: support@acenursing.com  
-Admin portal: yourdomain.com/admin
+| Feature | Detail |
+|---|---|
+| Authentication | JWT Bearer tokens, 7-day expiry |
+| Password hashing | bcrypt, cost factor 12 |
+| Rate limiting | 300 req/15 min global · 20 req/15 min on auth routes |
+| Input sanitization | `express-mongo-sanitize` prevents NoSQL injection |
+| HTTP headers | Helmet with Content-Security-Policy (PayPal domains whitelisted) |
+| CORS | Restricted to `FRONTEND_URL` in production |
+| File downloads | Private S3 bucket, signed URLs only — never public |
+| Price validation | Total calculated server-side; client prices are ignored |
+| Order ownership | Logged-in users can only capture their own orders |
+| Contact form | Server-side length limits on all fields |
+| Seed script | Exits immediately if `NODE_ENV=production` |
+| Error boundary | React `ErrorBoundary` catches render crashes app-wide |
+
+---
+
+## Deployment
+
+The project is configured for deployment on **Render** (backend) and **Vercel** (frontend).
+
+### Render (Backend)
+
+A `render.yaml` is included. Connect your GitHub repo in the Render dashboard and it will auto-detect the configuration. Set the secret environment variables (`MONGODB_URI`, `JWT_SECRET`, `PAYPAL_CLIENT_SECRET`, etc.) in the Render dashboard under **Environment**.
+
+### Vercel (Frontend)
+
+A `vercel.json` is included with SPA rewrite rules. Import the repo in Vercel, set the root directory to `frontend/`, and add:
+
+```
+VITE_API_URL=https://your-backend.onrender.com/api
+VITE_PAYPAL_CLIENT_ID=your_live_paypal_client_id
+```
+
+### Production Checklist
+
+- [ ] `NODE_ENV=production`
+- [ ] `JWT_SECRET` is at least 32 random characters
+- [ ] `PAYPAL_MODE=live` with live credentials
+- [ ] `FRONTEND_URL` set to your actual domain
+- [ ] S3 bucket has public access blocked
+- [ ] IAM user has a scoped policy (not `FullAccess`)
+- [ ] Admin password changed from the seed default
+- [ ] `RESEND_API_KEY` set with a verified sending domain
+
+---
+
+## Environment Variable Reference
+
+### Backend (`backend/.env`)
+
+| Variable | Required | Description |
+|---|---|---|
+| `MONGODB_URI` | ✅ | MongoDB connection string |
+| `JWT_SECRET` | ✅ | Min 32-character random string |
+| `JWT_EXPIRES_IN` | — | Token expiry (default: `7d`) |
+| `PAYPAL_CLIENT_ID` | ✅ | PayPal app client ID |
+| `PAYPAL_CLIENT_SECRET` | ✅ | PayPal app secret |
+| `PAYPAL_MODE` | ✅ | `sandbox` or `live` |
+| `AWS_ACCESS_KEY_ID` | ✅ | IAM user access key |
+| `AWS_SECRET_ACCESS_KEY` | ✅ | IAM user secret key |
+| `AWS_REGION` | ✅ | S3 bucket region (e.g. `us-east-1`) |
+| `AWS_S3_BUCKET` | ✅ | S3 bucket name |
+| `RESEND_API_KEY` | ✅ | Resend API key |
+| `FROM_EMAIL` | ✅ | Sender address (e.g. `orders@acenursing.com`) |
+| `FRONTEND_URL` | ✅ | Frontend origin for CORS + email links |
+| `PORT` | — | Server port (default: `5000`) |
+| `NODE_ENV` | — | `development` or `production` |
+| `TRUST_PROXY` | — | Set `true` when behind a reverse proxy |
+| `ENFORCE_HTTPS` | — | Set `true` to redirect HTTP → HTTPS |
+| `USE_AWS_SECRETS` | — | Set `true` to load secrets from AWS Secrets Manager |
+| `AWS_SECRETS_NAME` | — | Secret name in Secrets Manager (e.g. `acenursing/prod`) |
+| `OTEL_ENABLED` | — | Set `true` to enable OpenTelemetry tracing |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | — | OTLP collector endpoint |
+
+### Frontend (`frontend/.env`)
+
+| Variable | Required | Description |
+|---|---|---|
+| `VITE_API_URL` | ✅ | Backend API base URL (e.g. `http://localhost:5000/api`) |
+| `VITE_PAYPAL_CLIENT_ID` | ✅ | PayPal client ID (sandbox or live) |
+
+---
+
+## Support
+
+Email: support@acenursing.com
