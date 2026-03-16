@@ -19,12 +19,42 @@ function timeAgo(date) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
+function ContactMessageExpanded({ meta }) {
+  if (!meta?.message) return null;
+  return (
+    <div style={{ marginTop: 12, background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: '14px 16px' }}>
+      <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 10 }}>
+        {[['Name', meta.name], ['Email', meta.email], meta.phone && ['Phone', meta.phone], meta.subject && ['Subject', meta.subject]]
+          .filter(Boolean)
+          .map(([label, value]) => (
+            <div key={label}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</span>
+              <p style={{ fontSize: 13, color: 'var(--navy)', fontWeight: 600, marginTop: 1 }}>{value}</p>
+            </div>
+          ))}
+      </div>
+      <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.65, whiteSpace: 'pre-wrap', borderTop: '1px solid #FDE68A', paddingTop: 10 }}>
+        {meta.message}
+      </div>
+      <a
+        href={`mailto:${meta.email}?subject=Re: ${encodeURIComponent(meta.subject || 'Your message to AceNursing')}`}
+        className="btn btn-sm"
+        style={{ marginTop: 12, background: '#92400E', color: '#fff', textDecoration: 'none', display: 'inline-flex' }}
+        onClick={e => e.stopPropagation()}
+      >
+        ↩ Reply via Email
+      </a>
+    </div>
+  );
+}
+
 export default function AdminNotifications() {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [expanded, setExpanded] = useState(null);
 
   const load = () => {
     notificationsAPI.getAll()
@@ -60,6 +90,10 @@ export default function AdminNotifications() {
 
   const handleClick = async (n) => {
     if (!n.read) await handleMarkRead(n._id);
+    if (n.type === 'contact_message') {
+      setExpanded(prev => prev === n._id ? null : n._id);
+      return;
+    }
     if (n.link) navigate(n.link);
   };
 
@@ -136,10 +170,20 @@ export default function AdminNotifications() {
                     <span style={{ fontSize: 11, color: 'var(--muted)', flexShrink: 0 }}>{timeAgo(n.createdAt)}</span>
                   </div>
                   <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>{n.message}</p>
+                  {/* Expanded contact message */}
+                  {n.type === 'contact_message' && expanded === n._id && (
+                    <ContactMessageExpanded meta={n.meta} />
+                  )}
                   <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
                     <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: meta.bg, color: meta.color }}>
                       {n.type.replace('_', ' ')}
                     </span>
+                    {n.type === 'contact_message' && (
+                      <button onClick={e => { e.stopPropagation(); setExpanded(prev => prev === n._id ? null : n._id); }}
+                        style={{ fontSize: 11, color: '#92400E', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}>
+                        {expanded === n._id ? 'Hide message ▲' : 'View message ▼'}
+                      </button>
+                    )}
                     {!n.read && (
                       <button onClick={e => { e.stopPropagation(); handleMarkRead(n._id); }}
                         style={{ fontSize: 11, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}>

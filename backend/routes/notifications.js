@@ -10,10 +10,10 @@ router.post('/contact', async (req, res, next) => {
     if (!name || !email || !message) return res.status(400).json({ error: 'Name, email and message are required.' });
     await Notification.create({
       type: 'contact_message',
-      title: `Message from ${name}: ${subject || 'No subject'}`,
-      message: `${email} — ${message.slice(0, 200)}${message.length > 200 ? '…' : ''}`,
+      title: `${subject || 'Message'} — from ${name}`,
+      message: `${email}${phone ? ` · ${phone}` : ''} — ${message.slice(0, 300)}${message.length > 300 ? '…' : ''}`,
       link: '/admin/notifications',
-      meta: { name, email, subject, message },
+      meta: { name, email, phone: phone || '', subject: subject || '', message },
     });
     res.json({ success: true });
   } catch (err) { next(err); }
