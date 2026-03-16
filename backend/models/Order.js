@@ -11,7 +11,8 @@ const orderItemSchema = new mongoose.Schema({
   price: { type: Number, required: true },
   quantity: { type: Number, required: true, min: 1 },
   coverImage: String,
-  downloadToken: String,
+  downloadToken: String,      // SHA-256 hash of the raw token
+  downloadTokenHash: String,  // alias kept for clarity — same field
   downloadExpiry: Date,
 });
 

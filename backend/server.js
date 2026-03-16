@@ -123,8 +123,14 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(compression());
 
+// HTTP access logging — dev uses coloured output, production streams through Winston
 if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev')); // still useful locally
+  app.use(morgan('dev'));
+} else {
+  app.use(morgan('combined', {
+    stream: { write: (msg) => logger.info(msg.trim()) },
+    skip: (req) => req.url === '/api/health',
+  }));
 }
 
 // ─── Routes ───────────────────────────────────────────────────────────────────

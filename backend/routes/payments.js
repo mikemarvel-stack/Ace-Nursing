@@ -109,19 +109,23 @@ router.post('/paypal/capture', optionalAuth, async (req, res, next) => {
 
     // Assign tokens synchronously so they're set before save
     const expiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-    for (const item of order.items) {
-      item.downloadToken = crypto.randomBytes(32).toString('hex');
-      item.downloadExpiry = expiry;
+    const rawTokens = {}; // keyed by item index — only sent in response, never stored
+    for (let i = 0; i < order.items.length; i++) {
+      const raw = crypto.randomBytes(32).toString('hex');
+      rawTokens[i] = raw;
+      // Store only the SHA-256 hash — raw token is never persisted
+      order.items[i].downloadToken = crypto.createHash('sha256').update(raw).digest('hex');
+      order.items[i].downloadExpiry = expiry;
     }
 
     // Generate all signed S3 URLs in parallel
     const downloadLinks = await Promise.all(
-      order.items.map(async (item) => {
-        let url = `${process.env.FRONTEND_URL}/download/${item.downloadToken}`;
+      order.items.map(async (item, i) => {
+        let url = `${process.env.FRONTEND_URL}/download/${rawTokens[i]}`;
         if (item.product?.fileUrl?.key) {
           url = await getSignedDownloadUrl(item.product.fileUrl.key).catch(() => url);
         }
-        return { title: item.title, url, expiry, token: item.downloadToken };
+        return { title: item.title, url, expiry, token: rawTokens[i] };
       })
     );
 
@@ -141,7 +145,7 @@ router.post('/paypal/capture', optionalAuth, async (req, res, next) => {
               purchases: order.items.map((item) => ({
                 product: item.product?._id || item.product,
                 order: order._id,
-                downloadToken: item.downloadToken,
+                downloadToken: item.downloadToken, // already hashed
                 downloadExpiry: item.downloadExpiry,
               })),
             },
@@ -184,8 +188,11 @@ router.get('/download/:token', async (req, res, next) => {
   try {
     const { token } = req.params;
 
+    // Hash the incoming raw token to match what's stored in the DB
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
     const order = await Order.findOne({
-      'items.downloadToken': token,
+      'items.downloadToken': tokenHash,
       'payment.status': 'completed',
     }).populate('items.product');
 
@@ -193,10 +200,11 @@ router.get('/download/:token', async (req, res, next) => {
       return res.status(404).json({ error: 'Invalid or expired download link.' });
     }
 
+    // Constant-time comparison of hashes
     const item = order.items.find(
       (i) =>
         i.downloadToken &&
-        crypto.timingSafeEqual(Buffer.from(i.downloadToken), Buffer.from(token))
+        crypto.timingSafeEqual(Buffer.from(i.downloadToken), Buffer.from(tokenHash))
     );
     if (!item) return res.status(404).json({ error: 'Download not found.' });
 

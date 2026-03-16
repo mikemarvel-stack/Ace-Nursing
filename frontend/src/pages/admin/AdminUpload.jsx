@@ -6,6 +6,17 @@ const CATS = ['Study Guides', 'Flashcards', 'Reference Cards', 'Checklists', 'Bu
 const EMOJIS = ['📘', '💊', '🗂️', '✅', '📦', '🫀', '🧠', '🔢', '🧪', '⚡', '🏥', '👶'];
 const BADGES = ['', 'Best Seller', 'Popular', 'New', 'Top Rated', 'Best Value', 'Fan Fave', 'Advanced', 'Must Have'];
 
+const ALLOWED_PDF_TYPES = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_PDF_MB = 50;
+const MAX_IMAGE_MB = 5;
+
+function validateFile(file, allowedTypes, maxMB) {
+  if (!allowedTypes.includes(file.type)) return `Invalid file type: ${file.type}`;
+  if (file.size > maxMB * 1024 * 1024) return `File exceeds ${maxMB}MB limit`;
+  return null;
+}
+
 function DropZone({ label, accept, icon, file, onFile }) {
   const ref = useRef();
   const [dragging, setDragging] = useState(false);
@@ -131,8 +142,16 @@ export default function AdminUpload() {
         <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 16, padding: '20px 18px', marginBottom: 18 }}>
           <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--navy)', marginBottom: 16 }}>Upload Files</h2>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }} className="name-grid">
-            <DropZone label="Cover Image" accept="image/jpeg, image/png, image/webp" icon="🖼️" file={coverFile} onFile={setCoverFile} />
-            <DropZone label="PDF Document" accept=".pdf,.docx,.pptx,.xlsx" icon="📄" file={pdfFile} onFile={setPdfFile} />
+            <DropZone label="Cover Image" accept="image/jpeg, image/png, image/webp" icon="🖼️" file={coverFile} onFile={(f) => {
+              const err = validateFile(f, ALLOWED_IMAGE_TYPES, MAX_IMAGE_MB);
+              if (err) { toast.error(err); return; }
+              setCoverFile(f);
+            }} />
+            <DropZone label="PDF Document" accept=".pdf,.docx,.pptx,.xlsx" icon="📄" file={pdfFile} onFile={(f) => {
+              const err = validateFile(f, ALLOWED_PDF_TYPES, MAX_PDF_MB);
+              if (err) { toast.error(err); return; }
+              setPdfFile(f);
+            }} />
           </div>
         </div>
 

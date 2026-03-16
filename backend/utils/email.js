@@ -8,6 +8,17 @@ const getResend = () => {
 
 const FROM = `${process.env.FROM_NAME || 'AceNursing'} <${process.env.FROM_EMAIL || 'orders@acenursing.com'}>`;
 
+// Retry helper — exponential backoff, up to 3 attempts
+async function sendWithRetry(payload, attempts = 3) {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await getResend().emails.send(payload);
+    } catch (err) {
+      if (i === attempts - 1) throw err;
+      await new Promise((r) => setTimeout(r, 500 * 2 ** i)); // 500ms, 1s, 2s
+    }
+  }
+}
 // ─── HTML Template Wrapper ────────────────────────────────────────────────────
 const emailWrapper = (content) => `
 <!DOCTYPE html>
@@ -119,7 +130,7 @@ exports.sendOrderConfirmation = async ({ order, downloadLinks }) => {
     <p style="margin-top: 24px; font-size: 13px; color: #999;">Having issues downloading? Contact us at support@acenursing.com and we'll help immediately.</p>
   `;
 
-  return getResend().emails.send({
+  return sendWithRetry({
     from: FROM,
     to: order.customerInfo.email,
     subject: `✅ Your AceNursing Materials Are Ready – Order #${order.orderNumber}`,
@@ -139,7 +150,7 @@ exports.sendWelcomeEmail = async ({ user }) => {
     <p style="font-size: 13px; color: #999;">Your account email: ${user.email}</p>
   `;
 
-  return getResend().emails.send({
+  return sendWithRetry({
     from: FROM,
     to: user.email,
     subject: `Welcome to AceNursing, ${user.firstName}! 🎓`,
@@ -162,7 +173,7 @@ exports.sendPasswordResetEmail = async ({ user, resetUrl }) => {
     <p style="font-size: 12px; color: #999;">Link: ${resetUrl}</p>
   `;
 
-  return getResend().emails.send({
+  return sendWithRetry({
     from: FROM,
     to: user.email,
     subject: 'Reset Your AceNursing Password',
@@ -185,7 +196,7 @@ exports.sendAdminOrderAlert = async ({ order }) => {
     </div>
   `;
 
-  return getResend().emails.send({
+  return sendWithRetry({
     from: FROM,
     to: process.env.ADMIN_EMAIL,
     subject: `New Order #${order.orderNumber} – $${order.total.toFixed(2)}`,
