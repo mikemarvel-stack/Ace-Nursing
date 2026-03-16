@@ -6,8 +6,12 @@ const { protect, restrictTo } = require('../middleware/auth');
 // POST /api/notifications/contact — public, creates a contact message notification
 router.post('/contact', async (req, res, next) => {
   try {
-    const { name, email, subject, message } = req.body;
+    const { name, email, phone, subject, message } = req.body;
     if (!name || !email || !message) return res.status(400).json({ error: 'Name, email and message are required.' });
+    // Server-side length guards
+    if (name.length > 100 || email.length > 200 || (phone && phone.length > 30) || message.length > 5000) {
+      return res.status(400).json({ error: 'Input exceeds maximum allowed length.' });
+    }
     await Notification.create({
       type: 'contact_message',
       title: `${subject || 'Message'} — from ${name}`,

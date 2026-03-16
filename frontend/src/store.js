@@ -43,6 +43,8 @@ export const useCartStore = create(
     }),
     {
       name: 'acenursing-cart',
+      version: 1,
+      migrate: () => ({ items: [] }),
       partialize: (state) => ({ items: state.items }),
     }
   )

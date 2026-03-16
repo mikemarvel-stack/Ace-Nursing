@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PayPalButtons, usePayPalScriptReducer } from '@paypal/react-paypal-js';
 import toast from 'react-hot-toast';
@@ -39,6 +39,7 @@ export default function CheckoutPage() {
 
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
   const total = subtotal;
+  const paypalRenderKey = useMemo(() => [total], [total]);
 
   if (items.length === 0) {
     return (
@@ -211,7 +212,7 @@ export default function CheckoutPage() {
                           onError={onPayPalError}
                           onCancel={() => toast('Payment cancelled.')}
                           disabled={processing}
-                          forceReRender={[total]}
+                          forceReRender={paypalRenderKey}
                         />
                       </div>
                     )}

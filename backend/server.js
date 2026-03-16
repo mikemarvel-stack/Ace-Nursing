@@ -50,7 +50,22 @@ async function loadConfig() {
 }
 
 // ─── Security Middleware ──────────────────────────────────────────────────────
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", 'https://www.paypal.com', 'https://www.paypalobjects.com'],
+      frameSrc: ["'self'", 'https://www.paypal.com', 'https://www.sandbox.paypal.com'],
+      imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
+      connectSrc: ["'self'", 'https://api.paypal.com', 'https://api.sandbox.paypal.com'],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      fontSrc: ["'self'", 'https:', 'data:'],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
+    },
+  },
+}));
 app.use(mongoSanitize());
 
 // ─── Request Tracing / Logging ─────────────────────────────────────────────────

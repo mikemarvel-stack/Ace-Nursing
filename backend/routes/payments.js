@@ -10,8 +10,7 @@ const { getSignedDownloadUrl } = require('../utils/s3');
 const { sendOrderConfirmation, sendAdminOrderAlert } = require('../utils/email');
 const { createNotification } = require('../utils/notifications');
 
-// ─── POST /api/payments/paypal/create-order ───────────────────────────────────
-// Creates a PayPal order and returns the PayPal order ID for the frontend SDK
+// POST /api/payments/paypal/create-order
 router.post('/paypal/create-order', optionalAuth, async (req, res, next) => {
   try {
     const { items, customerInfo } = req.body;
@@ -20,7 +19,6 @@ router.post('/paypal/create-order', optionalAuth, async (req, res, next) => {
       return res.status(400).json({ error: 'Cart is empty.' });
     }
 
-    // Validate products and calculate total server-side (never trust client price)
     const productIds = items.map(i => i.productId);
     const products = await Product.find({ _id: { $in: productIds }, isActive: true });
 
@@ -43,7 +41,6 @@ router.post('/paypal/create-order', optionalAuth, async (req, res, next) => {
     const subtotal = orderItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
     const total = Math.round(subtotal * 100) / 100;
 
-    // Create our internal pending order
     const order = await Order.create({
       user: req.user?._id,
       customerInfo,
@@ -56,7 +53,6 @@ router.post('/paypal/create-order', optionalAuth, async (req, res, next) => {
       userAgent: req.headers['user-agent'],
     });
 
-    // Create PayPal order
     const paypalOrder = await createPayPalOrder({
       amount: total,
       currency: 'USD',
@@ -64,22 +60,16 @@ router.post('/paypal/create-order', optionalAuth, async (req, res, next) => {
       items: orderItems,
     });
 
-    // Store PayPal order ID
     order.payment.paypalOrderId = paypalOrder.id;
     await order.save();
 
-    res.json({
-      paypalOrderId: paypalOrder.id,
-      orderId: order._id,
-      total,
-    });
+    res.json({ paypalOrderId: paypalOrder.id, orderId: order._id, total });
   } catch (err) {
     next(err);
   }
 });
 
-// ─── POST /api/payments/paypal/capture ───────────────────────────────────────
-// Called after the buyer approves the PayPal payment on the frontend
+// POST /api/payments/paypal/capture
 router.post('/paypal/capture', optionalAuth, async (req, res, next) => {
   try {
     const { paypalOrderId, orderId } = req.body;
@@ -88,15 +78,18 @@ router.post('/paypal/capture', optionalAuth, async (req, res, next) => {
       return res.status(400).json({ error: 'Missing paypalOrderId or orderId.' });
     }
 
-    // Find our internal order
     const order = await Order.findById(orderId).populate('items.product');
     if (!order) return res.status(404).json({ error: 'Order not found.' });
+
+    // Ownership check: logged-in user may only capture their own order
+    if (req.user && order.user && order.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Forbidden.' });
+    }
 
     if (order.payment.status === 'completed') {
       return res.status(409).json({ error: 'Order already processed.' });
     }
 
-    // Capture payment via PayPal API
     const capture = await capturePayPalOrder(paypalOrderId);
 
     if (capture.status !== 'COMPLETED') {
@@ -105,11 +98,8 @@ router.post('/paypal/capture', optionalAuth, async (req, res, next) => {
       return res.status(400).json({ error: 'PayPal payment was not completed.', capture });
     }
 
-    // Extract capture details
-    const captureUnit = capture.purchase_units[0];
-    const captureDetails = captureUnit.payments.captures[0];
+    const captureDetails = capture.purchase_units[0].payments.captures[0];
 
-    // Update order
     order.payment.status = 'completed';
     order.payment.paypalCaptureId = captureDetails.id;
     order.payment.paypalPayerId = capture.payer?.payer_id;
@@ -117,66 +107,58 @@ router.post('/paypal/capture', optionalAuth, async (req, res, next) => {
     order.payment.paidAt = new Date();
     order.status = 'completed';
 
-    // Generate download tokens for each item
-    const downloadLinks = [];
-
+    // Assign tokens synchronously so they're set before save
+    const expiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     for (const item of order.items) {
-      const token = crypto.randomBytes(32).toString('hex');
-      const expiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-
-      item.downloadToken = token;
+      item.downloadToken = crypto.randomBytes(32).toString('hex');
       item.downloadExpiry = expiry;
-
-      // Generate signed S3 URL
-      let downloadUrl = `${process.env.FRONTEND_URL}/download/${token}`;
-
-      if (item.product?.fileUrl?.key) {
-        downloadUrl = await getSignedDownloadUrl(item.product.fileUrl.key).catch(
-          () => `${process.env.FRONTEND_URL}/download/${token}`
-        );
-      }
-
-      downloadLinks.push({
-        title: item.title,
-        url: downloadUrl,
-        expiry,
-        token,
-      });
-
-      // Update product sales count
-      await Product.findByIdAndUpdate(item.product?._id || item.product, {
-        $inc: { totalSales: item.quantity },
-      });
     }
 
-    // If user is logged in, add to their purchases
-    if (req.user) {
-      await User.findByIdAndUpdate(req.user._id, {
-        $push: {
-          purchases: order.items.map(item => ({
-            product: item.product?._id || item.product,
-            order: order._id,
-            downloadToken: item.downloadToken,
-            downloadExpiry: item.downloadExpiry,
-          })),
-        },
-      });
-    }
+    // Generate all signed S3 URLs in parallel
+    const downloadLinks = await Promise.all(
+      order.items.map(async (item) => {
+        let url = `${process.env.FRONTEND_URL}/download/${item.downloadToken}`;
+        if (item.product?.fileUrl?.key) {
+          url = await getSignedDownloadUrl(item.product.fileUrl.key).catch(() => url);
+        }
+        return { title: item.title, url, expiry, token: item.downloadToken };
+      })
+    );
 
+    // Single save — all tokens and payment fields set above
     await order.save();
 
-    // Send confirmation email — mark sent only on success
+    // Fire-and-forget: sales counts + user purchases in parallel
+    Promise.all([
+      ...order.items.map((item) =>
+        Product.findByIdAndUpdate(item.product?._id || item.product, {
+          $inc: { totalSales: item.quantity },
+        })
+      ),
+      req.user
+        ? User.findByIdAndUpdate(req.user._id, {
+            $push: {
+              purchases: order.items.map((item) => ({
+                product: item.product?._id || item.product,
+                order: order._id,
+                downloadToken: item.downloadToken,
+                downloadExpiry: item.downloadExpiry,
+              })),
+            },
+          })
+        : Promise.resolve(),
+    ]).catch(console.error);
+
+    // Fire-and-forget: emails + admin notification
     sendOrderConfirmation({ order, downloadLinks })
       .then(() => Order.findByIdAndUpdate(order._id, { downloadEmailSent: true }).catch(() => {}))
       .catch(console.error);
     sendAdminOrderAlert({ order }).catch(console.error);
-
-    // Notify admin
     createNotification({
       type: 'new_order',
       title: 'New Order Received',
       message: `${order.customerInfo.firstName} ${order.customerInfo.lastName} placed order ${order.orderNumber} for $${order.total.toFixed(2)}.`,
-      link: `/admin/orders`,
+      link: '/admin/orders',
       meta: { orderId: order._id, orderNumber: order.orderNumber, total: order.total, email: order.customerInfo.email },
     });
 
@@ -189,7 +171,7 @@ router.post('/paypal/capture', optionalAuth, async (req, res, next) => {
         orderNumber: order.orderNumber,
         total: order.total,
         status: order.status,
-        items: order.items.map(i => ({ title: i.title, quantity: i.quantity })),
+        items: order.items.map((i) => ({ title: i.title, quantity: i.quantity })),
       },
     });
   } catch (err) {
@@ -197,8 +179,7 @@ router.post('/paypal/capture', optionalAuth, async (req, res, next) => {
   }
 });
 
-// ─── GET /api/payments/download/:token ───────────────────────────────────────
-// Validate token and serve a fresh signed download URL
+// GET /api/payments/download/:token
 router.get('/download/:token', async (req, res, next) => {
   try {
     const { token } = req.params;
@@ -212,9 +193,10 @@ router.get('/download/:token', async (req, res, next) => {
       return res.status(404).json({ error: 'Invalid or expired download link.' });
     }
 
-    const item = order.items.find(i =>
-      i.downloadToken &&
-      crypto.timingSafeEqual(Buffer.from(i.downloadToken), Buffer.from(token))
+    const item = order.items.find(
+      (i) =>
+        i.downloadToken &&
+        crypto.timingSafeEqual(Buffer.from(i.downloadToken), Buffer.from(token))
     );
     if (!item) return res.status(404).json({ error: 'Download not found.' });
 
@@ -227,7 +209,6 @@ router.get('/download/:token', async (req, res, next) => {
       return res.status(404).json({ error: 'File not found. Please contact support.' });
     }
 
-    // Generate fresh signed URL (1 hour)
     const signedUrl = await getSignedDownloadUrl(product.fileUrl.key, 3600);
     res.redirect(signedUrl);
   } catch (err) {
@@ -235,7 +216,7 @@ router.get('/download/:token', async (req, res, next) => {
   }
 });
 
-// ─── GET /api/payments/orders ── User's own orders ────────────────────────────
+// GET /api/payments/orders — user's own orders
 router.get('/orders', protect, async (req, res, next) => {
   try {
     const orders = await Order.find({

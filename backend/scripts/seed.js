@@ -22,6 +22,11 @@ const PRODUCTS = [
 ];
 
 async function seed() {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('\u274c Seed script must not run in production. Aborting.');
+    process.exit(1);
+  }
+
   try {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('✅ Connected to MongoDB');

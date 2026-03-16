@@ -19,7 +19,7 @@ if (!ALLOWED_API_ORIGINS.has(parsedBase.origin) && import.meta.env.PROD) {
 
 const api = axios.create({
   baseURL: rawBaseURL,
-  timeout: 30000,
+  timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -82,14 +82,17 @@ export const uploadAPI = {
   uploadProductFull: (formData) =>
     api.post('/upload/product-full', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
     }),
   uploadPdf: (formData) =>
     api.post('/upload/pdf', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
     }),
   uploadImage: (formData) =>
     api.post('/upload/image', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 60000,
     }),
   deleteFile: (key) => api.delete('/upload/file', { data: { key } }),
 };

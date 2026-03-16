@@ -24,6 +24,29 @@ import ContactPage from './pages/ContactPage';
 import FAQPage from './pages/FAQPage';
 import PolicyPage from './pages/PolicyPage';
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 24px', textAlign: 'center' }}>
+          <div style={{ fontSize: 56, marginBottom: 16 }}>⚠️</div>
+          <h2 style={{ color: '#0C1B33', marginBottom: 8 }}>Something went wrong</h2>
+          <p style={{ color: '#6B7280', marginBottom: 24 }}>Please refresh the page or contact support if the problem persists.</p>
+          <button className="btn btn-primary" onClick={() => window.location.reload()}>Refresh Page</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const paypalOptions = {
   'client-id': import.meta.env.VITE_PAYPAL_CLIENT_ID || 'sb',
   currency: 'USD',
@@ -40,7 +63,8 @@ function ProtectedRoute({ children, adminOnly = false }) {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <PayPalScriptProvider options={paypalOptions} deferLoading={false}>
+    <ErrorBoundary>
+      <PayPalScriptProvider options={paypalOptions} deferLoading={false}>
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Toaster
           position="top-right"
@@ -102,5 +126,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         </Routes>
       </BrowserRouter>
     </PayPalScriptProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 );
