@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams, useParams, useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { productAPI } from '../api';
@@ -46,51 +46,48 @@ export default function ShopPage() {
   const [sort, setSort] = useState(searchParams.get('sort') || 'featured');
   const [page, setPage] = useState(1);
 
-  const fetchProducts = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = { page, limit: 12, sort };
-      if (cat !== 'All') params.category = cat;
-      if (search.trim()) params.search = search.trim();
-
-      const res = await productAPI.getAll(params);
-      setProducts(res.data.products);
-      setTotal(res.data.pagination.total);
-    } catch (err) {
-      console.error(err);
-      setProducts([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [cat, sort, search, page]);
-
+  // Sync category from URL
   useEffect(() => {
-    const timer = setTimeout(fetchProducts, search ? 400 : 0);
-    return () => clearTimeout(timer);
-  }, [fetchProducts]);
-
-  useEffect(() => {
-    document.title = cat === 'All' ? 'Shop – Ace Nursing' : `${cat} – Shop | Ace Nursing`;
-  }, [cat]);
-
-  useEffect(() => {
-    if (routeCategory) {
-      setCat(categoryFromSlug(routeCategory));
-    } else if (categoryQuery) {
-      setCat(categoryQuery);
-    } else {
-      setCat('All');
-    }
+    const next = routeCategory ? categoryFromSlug(routeCategory) : categoryQuery || 'All';
+    setCat(next);
     setPage(1);
   }, [routeCategory, categoryQuery]);
 
+  // Sync search/sort into URL params
   useEffect(() => {
     const params = {};
     if (search) params.search = search;
     if (sort !== 'featured') params.sort = sort;
     setSearchParams(params, { replace: true });
-    setPage(1);
   }, [search, sort]);
+
+  useEffect(() => {
+    document.title = cat === 'All' ? 'Shop – Ace Nursing' : `${cat} – Shop | Ace Nursing`;
+  }, [cat]);
+
+  // Single fetch effect: debounce only for search input, immediate for everything else
+  useEffect(() => {
+    let cancelled = false;
+    const delay = search ? 400 : 0;
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const params = { page, limit: 12, sort };
+        if (cat !== 'All') params.category = cat;
+        if (search.trim()) params.search = search.trim();
+        const res = await productAPI.getAll(params);
+        if (!cancelled) {
+          setProducts(res.data.products);
+          setTotal(res.data.pagination.total);
+        }
+      } catch (err) {
+        if (!cancelled) setProducts([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }, delay);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [cat, sort, search, page]);
 
   const handleCat = (c) => {
     const slug = slugFromCategory(c);

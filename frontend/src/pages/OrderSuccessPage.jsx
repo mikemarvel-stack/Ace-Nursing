@@ -1,9 +1,27 @@
 // ─── OrderSuccessPage ──────────────────────────────────────────────────────────
+import { useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 
 export default function OrderSuccessPage() {
   const { state } = useLocation();
   const order = state?.order;
+
+  // Auto-download all files as soon as the page loads
+  useEffect(() => {
+    if (!order?.downloadLinks?.length) return;
+    order.downloadLinks.forEach((link, i) => {
+      setTimeout(() => {
+        const a = document.createElement('a');
+        a.href = link.url;
+        a.download = `${link.title}.pdf`;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }, i * 800); // stagger so browser doesn't block multiple simultaneous downloads
+    });
+  }, []);
 
   return (
     <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
@@ -21,7 +39,7 @@ export default function OrderSuccessPage() {
         )}
 
         <p style={{ fontSize: 16, color: 'var(--muted)', lineHeight: 1.75, marginBottom: 28 }}>
-          Thank you for your purchase! Your nursing study materials are ready. Download links have been sent to your email.
+          Thank you for your purchase! Your files are downloading automatically. Download links have also been sent to your email.
         </p>
 
         {/* Download links */}
@@ -34,7 +52,7 @@ export default function OrderSuccessPage() {
                   <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--navy)', marginBottom: 2 }}>{link.title}</p>
                   <p style={{ fontSize: 12, color: 'var(--muted)' }}>Expires {new Date(link.expiry).toLocaleDateString()}</p>
                 </div>
-                <a href={link.url} download className="btn btn-primary btn-sm" style={{ textDecoration: 'none' }}>⬇ Download</a>
+                <a href={link.url} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm" style={{ textDecoration: 'none' }}>⬇ Download</a>
               </div>
             ))}
           </div>
