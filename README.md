@@ -1,5 +1,7 @@
 # AceNursing
 
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A full-stack e-commerce platform for premium nursing study materials. Students browse, purchase, and instantly download PDF study guides, flashcards, and reference materials. Payments are handled via PayPal, files are stored privately on AWS S3, and order confirmations with download links are delivered by email.
 
 ---
