@@ -103,9 +103,15 @@ const authLimiter = rateLimit({
   max: 20,
   message: { error: 'Too many auth attempts, please try again in 15 minutes.' },
 });
+const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many upload requests, please try again later.' },
+});
 
 app.use('/api', globalLimiter);
 app.use('/api/auth', authLimiter);
+app.use('/api/upload', uploadLimiter);
 
 // ─── CSRF mitigation ─────────────────────────────────────────────────────────
 app.use((req, res, next) => {
@@ -188,8 +194,21 @@ app.use((err, req, res, next) => {
 // ─── Database + Server Boot ───────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 
+const REQUIRED_ENV = [
+  'MONGODB_URI', 'JWT_SECRET',
+  'PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET', 'PAYPAL_MODE',
+  'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_REGION', 'AWS_S3_BUCKET',
+  'RESEND_API_KEY', 'FROM_EMAIL', 'FRONTEND_URL',
+];
+
 async function startServer() {
   await loadConfig();
+
+  const missing = REQUIRED_ENV.filter(k => !process.env[k]);
+  if (missing.length) {
+    logger.error('Missing required environment variables: %s', missing.join(', '));
+    process.exit(1);
+  }
 
   // Initialize tracing (if enabled) before other work
   initTelemetry();

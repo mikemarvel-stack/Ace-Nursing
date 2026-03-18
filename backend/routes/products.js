@@ -66,6 +66,7 @@ router.get('/', optionalAuth, async (req, res, next) => {
       Product.countDocuments(filter),
     ]);
 
+    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
     res.json({
       products,
       pagination: {
@@ -88,6 +89,7 @@ router.get('/featured', async (req, res, next) => {
       .limit(6)
       .select('-reviews -fileUrl -__v')
       .lean();
+    res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
     res.json({ products });
   } catch (err) {
     next(err);

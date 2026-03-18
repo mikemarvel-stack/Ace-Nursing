@@ -34,8 +34,13 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    productAPI.getFeatured()
-      .then(res => setFeatured(res.data.products))
+    const promise = window.__featuredPromise || fetch(
+      `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/products/featured`
+    ).then(r => r.json()).catch(() => ({ products: [] }));
+    // Clear so a manual refresh re-fetches
+    window.__featuredPromise = null;
+    promise
+      .then(data => setFeatured(data.products || []))
       .catch(() => setFeatured([]))
       .finally(() => setLoading(false));
   }, []);

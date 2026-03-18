@@ -12,4 +12,15 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (id.includes('@paypal')) return 'paypal';
+          if (id.includes('zustand')) return 'store';
+          if (id.includes('node_modules')) return 'vendor';
+        },
+      },
+    },
+  },
 });

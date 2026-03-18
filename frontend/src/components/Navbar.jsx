@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore, useCartStore } from '../store';
 import { notificationsAPI } from '../api';
@@ -11,12 +11,23 @@ export default function Navbar() {
   const { items, openCart } = useCartStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [materialsOpen, setMaterialsOpen] = useState(false);
-  const [materialsSearch, setMaterialsSearch] = useState('');
-  const [materialsHighlight, setMaterialsHighlight] = useState(0);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const materialsRef = useRef(null);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifs, setNotifs] = useState([]);
   const [notifUnread, setNotifUnread] = useState(0);
+
+  // Close materials dropdown on outside click
+  useEffect(() => {
+    if (!materialsOpen) return;
+    const handler = (e) => {
+      if (materialsRef.current && !materialsRef.current.contains(e.target)) {
+        setMaterialsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [materialsOpen]);
 
   // Poll user notifications every 60s when logged in
   useEffect(() => {
@@ -56,44 +67,10 @@ export default function Navbar() {
     { label: 'Bundles', path: '/shop/bundles' },
   ];
 
-  const filteredMaterials = MATERIALS.filter(item =>
-    item.label.toLowerCase().includes(materialsSearch.toLowerCase())
-  );
-
-  const handleMaterialsKeyDown = (e) => {
-    if (!materialsOpen) return;
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setMaterialsHighlight(prev => Math.min(prev + 1, filteredMaterials.length - 1));
-    }
-    if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setMaterialsHighlight(prev => Math.max(prev - 1, 0));
-    }
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const item = filteredMaterials[materialsHighlight];
-      if (item) {
-        navigate(item.path);
-        setMaterialsOpen(false);
-      }
-    }
-    if (e.key === 'Escape') {
-      setMaterialsOpen(false);
-    }
-  };
-
-  useEffect(() => {
-    setMaterialsHighlight(0);
-  }, [filteredMaterials.length]);
-
   useEffect(() => {
     setMenuOpen(false);
     setUserMenuOpen(false);
     setMaterialsOpen(false);
-    setMaterialsSearch('');
-    setMaterialsHighlight(0);
     setNotifOpen(false);
   }, [location.pathname]);
 
@@ -164,10 +141,7 @@ export default function Navbar() {
 
           <Link to="/" style={linkStyle('/')}>Home</Link>
 
-          <div
-            onMouseEnter={() => setMaterialsOpen(true)}
-            onMouseLeave={() => setMaterialsOpen(false)}
-            style={{ position: 'relative' }}>
+          <div ref={materialsRef} style={{ position: 'relative' }}>
             <button
               onClick={() => setMaterialsOpen(v => !v)}
               style={{
@@ -183,53 +157,29 @@ export default function Navbar() {
             </button>
 
             {materialsOpen && (
-              <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, background: '#0C1B33', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, padding: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.25)', minWidth: 240, zIndex: 40 }}>
-                <input
-                  value={materialsSearch}
-                  onChange={e => { setMaterialsSearch(e.target.value); setMaterialsHighlight(0); }}
-                  onKeyDown={handleMaterialsKeyDown}
-                  placeholder="Search materials…"
-                  autoFocus
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: 10,
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    background: 'rgba(255,255,255,0.08)',
-                    color: '#fff',
-                    outline: 'none',
-                    fontSize: 13,
-                    marginBottom: 8,
-                  }}
-                />
-                <div style={{ maxHeight: 220, overflowY: 'auto' }}>
-                  {filteredMaterials.length === 0 ? (
-                    <div style={{ padding: '10px 12px', color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>No matches</div>
-                  ) : (
-                    filteredMaterials.map((item, index) => (
-                      <button
-                        key={item.path}
-                        onClick={() => { navigate(item.path); setMaterialsOpen(false); }}
-                        onMouseOver={() => setMaterialsHighlight(index)}
-                        style={{
-                          width: '100%',
-                          textAlign: 'left',
-                          padding: '10px 12px',
-                          background: index === materialsHighlight ? 'rgba(255,255,255,0.14)' : 'transparent',
-                          border: 'none',
-                          color: 'rgba(255,255,255,0.9)',
-                          fontSize: 14,
-                          cursor: 'pointer',
-                          borderRadius: 10,
-                          marginBottom: 4,
-                          transition: 'background 0.2s',
-                        }}
-                      >
-                        {item.label}
-                      </button>
-                    ))
-                  )}
-                </div>
+              <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, background: '#0C1B33', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, padding: 8, boxShadow: '0 10px 30px rgba(0,0,0,0.25)', minWidth: 200, zIndex: 40 }}>
+                {MATERIALS.map((item) => (
+                  <button
+                    key={item.path}
+                    onClick={() => { navigate(item.path); setMaterialsOpen(false); }}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '10px 12px',
+                      background: location.pathname === item.path ? 'rgba(255,255,255,0.14)' : 'transparent',
+                      border: 'none',
+                      color: 'rgba(255,255,255,0.9)',
+                      fontSize: 14,
+                      cursor: 'pointer',
+                      borderRadius: 10,
+                      transition: 'background 0.15s',
+                    }}
+                    onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.14)'}
+                    onMouseOut={e => e.currentTarget.style.background = location.pathname === item.path ? 'rgba(255,255,255,0.14)' : 'transparent'}
+                  >
+                    {item.label}
+                  </button>
+                ))}
               </div>
             )}
           </div>

@@ -1,0 +1,10 @@
+{
+  "env": { "node": true, "es2022": true },
+  "parserOptions": { "ecmaVersion": 2022 },
+  "rules": {
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_|next" }],
+    "no-console": "warn",
+    "eqeqeq": "error",
+    "no-var": "error"
+  }
+}

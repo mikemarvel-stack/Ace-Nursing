@@ -5,6 +5,13 @@ import { PayPalScriptProvider } from '@paypal/react-paypal-js';
 import { Toaster } from 'react-hot-toast';
 import './index.css';
 
+// Kick off the featured-products fetch immediately — before any component mounts.
+// HomePage reads window.__featuredPromise so it never waits for React to boot first.
+const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+window.__featuredPromise = fetch(`${apiBase}/products/featured`)
+  .then(r => r.json())
+  .catch(() => ({ products: [] }));
+
 import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
 import ShopPage from './pages/ShopPage';
