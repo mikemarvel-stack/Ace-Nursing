@@ -76,6 +76,7 @@ export const paymentAPI = {
   capturePayPalOrder: (data) => api.post('/payments/paypal/capture', data),
   createCustomPayPalOrder: (data) => api.post('/payments/paypal/create-custom-order', data),
   captureCustomPayPalOrder: (data) => api.post('/payments/paypal/capture-custom-order', data),
+  redownloadCustomOrder: (id) => api.get(`/payments/custom-order/${id}/download`),
   getMyOrders: () => api.get('/payments/orders'),
 };
 

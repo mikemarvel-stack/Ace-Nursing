@@ -50,6 +50,15 @@ exports.captureOrderSchema = z.object({
   orderId:       z.string().length(24),
 });
 
+exports.createCustomOrderSchema = z.object({
+  customOrderId: z.string().length(24),
+});
+
+exports.captureCustomOrderSchema = z.object({
+  paypalOrderId: z.string().min(1).max(100),
+  customOrderId: z.string().length(24),
+});
+
 // ─── Contact ──────────────────────────────────────────────────────────────────
 exports.contactSchema = z.object({
   name:    z.string().min(1).max(100).trim(),
@@ -67,9 +76,10 @@ exports.contactSchema = z.object({
 exports.validate = (schema) => (req, res, next) => {
   const result = schema.safeParse(req.body);
   if (!result.success) {
-    const errors = result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`);
+    const issues = result.error?.issues ?? result.error?.errors ?? [];
+    const errors = issues.map(e => `${e.path.join('.')}: ${e.message}`);
     return res.status(400).json({ error: 'Validation failed', details: errors });
   }
-  req.body = result.data; // replace with coerced/trimmed data
+  req.body = result.data;
   next();
 };

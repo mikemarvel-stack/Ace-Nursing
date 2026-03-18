@@ -85,7 +85,7 @@ export default function OrderSuccessPage() {
           <p style={{ fontSize: 14, color: '#065F46', lineHeight: 1.7 }}>
             📧 Download links also sent to your email<br />
             ⏱ Links valid for 30 days<br />
-            💬 Need help? Email support@acenursing.com
+            💬 Need help? Email supportacenursing@gmail.com
           </p>
         </div>
 

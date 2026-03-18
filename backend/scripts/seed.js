@@ -4,8 +4,6 @@
  */
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
-
 const PRODUCTS = [
   { title: 'NCLEX-RN Master Study Guide', category: 'RN Prep (NCLEX-RN)', price: 29.99, originalPrice: 49.99, pages: 450, badge: 'Best Seller', featured: true, emoji: '🩺', rating: { average: 4.9, count: 234 }, totalSales: 1200, description: 'The ultimate NCLEX-RN prep covering all 8 client needs categories with 1,200+ practice questions, rationales, and expert test-taking strategies developed by experienced nurse educators.', tags: ['nclex', 'rn', 'exam prep'] },
   { title: 'Medical Terminology & Fundamentals', category: 'Fundamentals of Nursing', price: 19.99, originalPrice: 29.99, pages: 120, badge: 'Popular', featured: true, emoji: '📋', rating: { average: 4.8, count: 189 }, totalSales: 870, description: '500+ medical terminology cards organized by body system. Master medical language quickly with mnemonics, etymology, and clinical examples.', tags: ['terminology', 'vocabulary', 'fundamentals'] },

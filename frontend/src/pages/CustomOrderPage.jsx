@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { PayPalButtons, usePayPalScriptReducer } from '@paypal/react-paypal-js';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store';
-import { customOrdersAPI, paymentAPI } from '../api';
+import { customOrdersAPI, paymentAPI, uploadAPI } from '../api';
 import useSEO from '../hooks/useSEO';
 
 const TYPES = ['Essay', 'Case Study', 'Care Plan', 'Research Paper', 'Presentation', 'Exam Prep', 'Other'];
@@ -108,6 +108,32 @@ function PayNowModal({ order, onClose, onPaid }) {
   );
 }
 
+function RedownloadButton({ orderId }) {
+  const [loading, setLoading] = useState(false);
+  const handleRedownload = async () => {
+    setLoading(true);
+    try {
+      const res = await paymentAPI.redownloadCustomOrder(orderId);
+      const a = document.createElement('a');
+      a.href = res.data.downloadUrl;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch { toast.error('Failed to get download link. Please try again.'); }
+    finally { setLoading(false); }
+  };
+  return (
+    <div style={{ background: '#EBF0F8', border: '1px solid #C0D4F0', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
+      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--navy)', marginBottom: 8 }}>🏁 Assignment completed &amp; paid</p>
+      <button className="btn btn-primary btn-sm" onClick={handleRedownload} disabled={loading}>
+        {loading ? 'Generating link…' : '⬇ Re-download Assignment'}
+      </button>
+    </div>
+  );
+}
+
 function OrderCard({ order, onRespond, onRevision, onPayNow }) {
   const sm = STATUS_META[order.status] || STATUS_META.submitted;
   const [declining, setDeclining] = useState(false);
@@ -176,6 +202,11 @@ function OrderCard({ order, onRespond, onRevision, onPayNow }) {
         </div>
       )}
 
+      {/* Completed + paid — re-download */}
+      {order.status === 'completed' && order.payment?.status === 'paid' && (
+        <RedownloadButton orderId={order._id} />
+      )}
+
       {/* Accept / Decline quote */}
       {order.status === 'quoted' && (
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
@@ -227,8 +258,9 @@ export default function CustomOrderPage() {
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submittedOrder, setSubmittedOrder] = useState(null);
-  const [payingOrder, setPayingOrder] = useState(null); // order being paid
-  const [downloadUrl, setDownloadUrl] = useState(null); // post-payment download URL
+  const [payingOrder, setPayingOrder] = useState(null);
+  const [downloadUrl, setDownloadUrl] = useState(null);
+  const [resolvingPay, setResolvingPay] = useState(false); // true while loading orders for ?pay= redirect
 
   const [form, setForm] = useState({
     firstName: user?.firstName || '',
@@ -274,7 +306,8 @@ export default function CustomOrderPage() {
   useEffect(() => {
     const payId = searchParams.get('pay');
     if (payId && isAuthenticated) {
-      loadMyOrders(payId);
+      setResolvingPay(true);
+      loadMyOrders(payId).finally(() => setResolvingPay(false));
       setSearchParams({}, { replace: true });
     } else if (payId && !isAuthenticated) {
       navigate('/login?redirect=/custom-order?pay=' + payId);
@@ -331,6 +364,14 @@ export default function CustomOrderPage() {
 
   return (
     <div style={{ background: 'var(--cream)', minHeight: '80vh' }}>
+      {resolvingPay && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(255,255,255,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400 }}>
+          <div style={{ textAlign: 'center' }}>
+            <div className="spinner" style={{ borderTopColor: 'var(--navy)', borderColor: 'var(--border)', width: 44, height: 44, borderWidth: 4, margin: '0 auto 14px' }} />
+            <p style={{ color: 'var(--navy)', fontWeight: 600 }}>Loading your order…</p>
+          </div>
+        </div>
+      )}
       {payingOrder && (
         <PayNowModal
           order={payingOrder}

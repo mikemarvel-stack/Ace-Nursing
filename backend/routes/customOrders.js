@@ -125,7 +125,8 @@ router.post('/:id/revision', protect, asyncHandler(async (req, res) => {
     $or: [{ user: req.user._id }, { 'customerInfo.email': req.user.email }],
   });
   if (!order) return res.status(404).json({ error: 'Order not found.' });
-  if (order.status !== 'delivered') return res.status(400).json({ error: 'Can only request revision on delivered orders.' });
+  if (!['delivered', 'completed'].includes(order.status)) return res.status(400).json({ error: 'Can only request revision on delivered orders.' });
+  if (order.payment.status === 'paid') return res.status(400).json({ error: 'Order is already paid and completed. Contact support for revisions.' });
 
   order.revisionRequests.push({ notes });
   order.status = 'revision_requested';

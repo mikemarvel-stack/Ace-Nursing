@@ -11,7 +11,6 @@ const SITE_URL = process.env.FRONTEND_URL || 'https://acenursing.com';
 
 // Ping Google to re-crawl a URL after publishing
 const pingGoogle = (slug) => {
-  const url = `${SITE_URL}/product/${slug}`;
   axios.get(`https://www.google.com/ping?sitemap=${encodeURIComponent(`${process.env.BACKEND_URL || 'https://ace-nursing.onrender.com'}/sitemap.xml`)}`, { timeout: 5000 })
     .catch(() => {});
 };
@@ -162,12 +161,35 @@ router.post('/product-full', protect, restrictTo('admin'),
 );
 
 // ─── POST /api/upload/custom-order-file ─────────────────────────────────────
-const uploadAny = multer({
+const CUSTOM_ORDER_ALLOWED_MIMES = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/zip',
+  'application/x-zip-compressed',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'text/plain',
+]);
+
+const uploadCustomOrder = multer({
   storage,
   limits: { fileSize: 100 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (CUSTOM_ORDER_ALLOWED_MIMES.has(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Allowed: PDF, Word, PowerPoint, Excel, ZIP, images, plain text.'), false);
+    }
+  },
 });
 
-router.post('/custom-order-file', protect, restrictTo('admin'), uploadAny.single('file'),
+router.post('/custom-order-file', protect, restrictTo('admin'), uploadCustomOrder.single('file'),
   asyncHandler(async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file provided.' });
     const { customOrderId } = req.body;

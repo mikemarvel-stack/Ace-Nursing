@@ -11,7 +11,7 @@ const { getSignedDownloadUrl } = require('../utils/s3');
 const { sendOrderConfirmation, sendAdminOrderAlert } = require('../utils/email');
 const { createNotification } = require('../utils/notifications');
 const asyncHandler = require('../utils/asyncHandler');
-const { validate, createOrderSchema, captureOrderSchema } = require('../utils/validation');
+const { validate, createOrderSchema, captureOrderSchema, createCustomOrderSchema, captureCustomOrderSchema } = require('../utils/validation');
 
 // POST /api/payments/paypal/create-order
 router.post('/paypal/create-order', optionalAuth, validate(createOrderSchema), asyncHandler(async (req, res) => {
@@ -235,14 +235,14 @@ router.get('/orders', protect, asyncHandler(async (req, res) => {
 }));
 
 // POST /api/payments/paypal/create-custom-order
-router.post('/paypal/create-custom-order', protect, asyncHandler(async (req, res) => {
+router.post('/paypal/create-custom-order', protect, validate(createCustomOrderSchema), asyncHandler(async (req, res) => {
   const { customOrderId } = req.body;
   const customOrder = await CustomOrder.findOne({
     _id: customOrderId,
     $or: [{ user: req.user._id }, { 'customerInfo.email': req.user.email }],
   });
   if (!customOrder) return res.status(404).json({ error: 'Custom order not found.' });
-  if (customOrder.status !== 'delivered') return res.status(400).json({ error: 'Order is not yet delivered.' });
+  if (!['delivered', 'completed'].includes(customOrder.status)) return res.status(400).json({ error: 'Order is not yet delivered.' });
   if (customOrder.payment.status === 'paid') return res.status(409).json({ error: 'Already paid.' });
   if (!customOrder.quote?.price) return res.status(400).json({ error: 'No quote price set.' });
 
@@ -260,22 +260,43 @@ router.post('/paypal/create-custom-order', protect, asyncHandler(async (req, res
 }));
 
 // POST /api/payments/paypal/capture-custom-order
-router.post('/paypal/capture-custom-order', protect, asyncHandler(async (req, res) => {
+router.post('/paypal/capture-custom-order', protect, validate(captureCustomOrderSchema), asyncHandler(async (req, res) => {
   const { paypalOrderId, customOrderId } = req.body;
-  if (!paypalOrderId || !customOrderId) return res.status(400).json({ error: 'paypalOrderId and customOrderId are required.' });
 
   const customOrder = await CustomOrder.findOne({
     _id: customOrderId,
     $or: [{ user: req.user._id }, { 'customerInfo.email': req.user.email }],
   });
   if (!customOrder) return res.status(404).json({ error: 'Custom order not found.' });
-  if (customOrder.payment.status === 'paid') return res.status(409).json({ error: 'Already paid.' });
 
-  const capture = await capturePayPalOrder(paypalOrderId);
+  // Idempotent: already paid — just return a fresh signed URL
+  if (customOrder.payment.status === 'paid') {
+    let downloadUrl = customOrder.delivery.downloadUrl || null;
+    if (customOrder.delivery.fileKey) {
+      downloadUrl = await getSignedDownloadUrl(customOrder.delivery.fileKey, 7 * 24 * 60 * 60).catch(() => downloadUrl);
+    }
+    return res.json({ success: true, downloadUrl, orderNumber: customOrder.orderNumber });
+  }
+
+  // Capture at PayPal — handle ORDER_ALREADY_CAPTURED gracefully
+  let capture;
+  try {
+    capture = await capturePayPalOrder(paypalOrderId);
+  } catch (err) {
+    const paypalCode = err.response?.data?.details?.[0]?.issue;
+    if (paypalCode === 'ORDER_ALREADY_CAPTURED') {
+      // PayPal already captured — treat as success, mark paid
+      capture = { status: 'COMPLETED' };
+    } else {
+      throw err;
+    }
+  }
+
   if (capture.status !== 'COMPLETED') {
     return res.status(400).json({ error: 'PayPal payment was not completed.' });
   }
 
+  // Save first, then generate URL — so payment is recorded even if URL generation fails
   customOrder.payment.status = 'paid';
   customOrder.payment.method = 'paypal';
   customOrder.payment.paidAt = new Date();
@@ -283,8 +304,7 @@ router.post('/paypal/capture-custom-order', protect, asyncHandler(async (req, re
   customOrder.status = 'completed';
   await customOrder.save();
 
-  // Generate fresh signed download URL from stored fileKey
-  let downloadUrl = customOrder.delivery.downloadUrl;
+  let downloadUrl = customOrder.delivery.downloadUrl || null;
   if (customOrder.delivery.fileKey) {
     downloadUrl = await getSignedDownloadUrl(customOrder.delivery.fileKey, 7 * 24 * 60 * 60).catch(() => downloadUrl);
   }
@@ -299,6 +319,20 @@ router.post('/paypal/capture-custom-order', protect, asyncHandler(async (req, re
   });
 
   res.json({ success: true, downloadUrl, orderNumber: customOrder.orderNumber });
+}));
+
+// GET /api/payments/custom-order/:id/download — re-download after payment
+router.get('/custom-order/:id/download', protect, asyncHandler(async (req, res) => {
+  const customOrder = await CustomOrder.findOne({
+    _id: req.params.id,
+    $or: [{ user: req.user._id }, { 'customerInfo.email': req.user.email }],
+  });
+  if (!customOrder) return res.status(404).json({ error: 'Custom order not found.' });
+  if (customOrder.payment.status !== 'paid') return res.status(402).json({ error: 'Payment required to download.' });
+  if (!customOrder.delivery.fileKey) return res.status(404).json({ error: 'No file attached to this order yet.' });
+
+  const downloadUrl = await getSignedDownloadUrl(customOrder.delivery.fileKey, 7 * 24 * 60 * 60);
+  res.json({ downloadUrl });
 }));
 
 module.exports = router;
