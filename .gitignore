@@ -13,6 +13,13 @@ frontend/dist/
 !.env.example
 !**/.env.example
 
+# Coverage reports
+coverage/
+**/coverage/
+
+# App logs
+backend/logs/
+
 # Logs
 npm-debug.log*
 yarn-debug.log*
