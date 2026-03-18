@@ -9,10 +9,11 @@ const { createPayPalOrder, capturePayPalOrder } = require('../config/paypal');
 const { getSignedDownloadUrl } = require('../utils/s3');
 const { sendOrderConfirmation, sendAdminOrderAlert } = require('../utils/email');
 const { createNotification } = require('../utils/notifications');
+const asyncHandler = require('../utils/asyncHandler');
+const { validate, createOrderSchema, captureOrderSchema } = require('../utils/validation');
 
 // POST /api/payments/paypal/create-order
-router.post('/paypal/create-order', optionalAuth, async (req, res, next) => {
-  try {
+router.post('/paypal/create-order', optionalAuth, validate(createOrderSchema), asyncHandler(async (req, res) => {
     const { items, customerInfo } = req.body;
 
     if (!items?.length) {
@@ -64,19 +65,10 @@ router.post('/paypal/create-order', optionalAuth, async (req, res, next) => {
     await order.save();
 
     res.json({ paypalOrderId: paypalOrder.id, orderId: order._id, total });
-  } catch (err) {
-    next(err);
-  }
-});
+}));
 
 // POST /api/payments/paypal/capture
-router.post('/paypal/capture', optionalAuth, async (req, res, next) => {
-  try {
-    const { paypalOrderId, orderId } = req.body;
-
-    if (!paypalOrderId || !orderId) {
-      return res.status(400).json({ error: 'Missing paypalOrderId or orderId.' });
-    }
+router.post('/paypal/capture', optionalAuth, validate(captureOrderSchema), asyncHandler(async (req, res) => {
 
     const order = await Order.findById(orderId).populate('items.product');
     if (!order) return res.status(404).json({ error: 'Order not found.' });
@@ -191,14 +183,10 @@ router.post('/paypal/capture', optionalAuth, async (req, res, next) => {
         items: order.items.map((i) => ({ title: i.title, quantity: i.quantity })),
       },
     });
-  } catch (err) {
-    next(err);
-  }
-});
+}));
 
 // GET /api/payments/download/:token
-router.get('/download/:token', async (req, res, next) => {
-  try {
+router.get('/download/:token', asyncHandler(async (req, res) => {
     const { token } = req.params;
 
     // Hash the incoming raw token to match what's stored in the DB
@@ -232,23 +220,16 @@ router.get('/download/:token', async (req, res, next) => {
 
     const signedUrl = await getSignedDownloadUrl(product.fileUrl.key, 3600);
     res.redirect(signedUrl);
-  } catch (err) {
-    next(err);
-  }
-});
+}));
 
 // GET /api/payments/orders — user's own orders
-router.get('/orders', protect, async (req, res, next) => {
-  try {
+router.get('/orders', protect, asyncHandler(async (req, res) => {
     const orders = await Order.find({
       $or: [{ user: req.user._id }, { 'customerInfo.email': req.user.email }],
     })
       .sort('-createdAt')
       .select('-items.downloadToken');
     res.json({ orders });
-  } catch (err) {
-    next(err);
-  }
-});
+}));
 
 module.exports = router;

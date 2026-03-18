@@ -67,7 +67,6 @@ app.use(helmet({
   },
 }));
 app.use(mongoSanitize());
-
 // ─── Request Tracing / Logging ─────────────────────────────────────────────────
 app.use(requestId);
 app.use((req, res, next) => {
@@ -214,7 +213,9 @@ async function startServer() {
   initTelemetry();
 
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
+    await mongoose.connect(process.env.MONGODB_URI, {
+      maxPoolSize: 20,
+    });
     logger.info('MongoDB connected');
 
     app.listen(PORT, () => {

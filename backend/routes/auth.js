@@ -1,16 +1,24 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
 const User = require('../models/User');
 const { protect, signToken } = require('../middleware/auth');
 const { sendWelcomeEmail, sendPasswordResetEmail } = require('../utils/email');
 const { createNotification } = require('../utils/notifications');
-const rateLimit = require('express-rate-limit');
+const asyncHandler = require('../utils/asyncHandler');
+const { validate, registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, updateProfileSchema } = require('../utils/validation');
 
 const setupAdminLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 5,
   message: { error: 'Too many setup attempts.' },
+});
+
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: { error: 'Too many password reset requests. Try again in 1 hour.' },
 });
 
 // ─── Helper ────────────────────────────────────────────────────────────────────
@@ -21,170 +29,119 @@ const sendAuthResponse = (res, user, statusCode = 200) => {
 };
 
 // ─── POST /api/auth/register ──────────────────────────────────────────────────
-router.post('/register', async (req, res, next) => {
-  try {
-    const { firstName, lastName, email, password, phone, country } = req.body;
-    // Strip role — never allow self-assignment of admin
+router.post('/register', validate(registerSchema), asyncHandler(async (req, res) => {
+  const { firstName, lastName, email, password, phone, country } = req.body;
 
-    const existing = await User.findOne({ email: email?.toLowerCase() });
-    if (existing) {
-      return res.status(409).json({ error: 'An account with this email already exists.' });
-    }
-
-    const user = await User.create({ firstName, lastName, email, password, phone, country });
-
-    // Fire-and-forget welcome email
-    sendWelcomeEmail({ user }).catch(console.error);
-
-    // Notify admin
-    createNotification({
-      type: 'new_user',
-      title: 'New User Registered',
-      message: `${user.firstName} ${user.lastName} (${user.email}) just created an account.`,
-      link: '/admin',
-      meta: { userId: user._id, email: user.email, country: user.country },
-    });
-
-    sendAuthResponse(res, user, 201);
-  } catch (err) {
-    next(err);
+  const existing = await User.findOne({ email });
+  if (existing) {
+    return res.status(409).json({ error: 'An account with this email already exists.' });
   }
-});
+
+  const user = await User.create({ firstName, lastName, email, password, phone, country });
+
+  sendWelcomeEmail({ user }).catch(() => {});
+  createNotification({
+    type: 'new_user',
+    title: 'New User Registered',
+    message: `${user.firstName} ${user.lastName} (${user.email}) just created an account.`,
+    link: '/admin',
+    meta: { userId: user._id, email: user.email, country: user.country },
+  });
+
+  sendAuthResponse(res, user, 201);
+}));
 
 // ─── POST /api/auth/login ─────────────────────────────────────────────────────
-router.post('/login', async (req, res, next) => {
-  try {
-    const { email, password } = req.body;
+router.post('/login', validate(loginSchema), asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required.' });
-    }
-
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
-    if (!user || !(await user.comparePassword(password))) {
-      return res.status(401).json({ error: 'Invalid email or password.' });
-    }
-
-    if (!user.isActive) {
-      return res.status(403).json({ error: 'Your account has been deactivated. Contact support.' });
-    }
-
-    user.lastLogin = new Date();
-    await user.save({ validateBeforeSave: false });
-
-    sendAuthResponse(res, user);
-  } catch (err) {
-    next(err);
+  const user = await User.findOne({ email }).select('+password');
+  if (!user || !(await user.comparePassword(password))) {
+    return res.status(401).json({ error: 'Invalid email or password.' });
   }
-});
+
+  if (!user.isActive) {
+    return res.status(403).json({ error: 'Your account has been deactivated. Contact support.' });
+  }
+
+  user.lastLogin = new Date();
+  await user.save({ validateBeforeSave: false });
+
+  sendAuthResponse(res, user);
+}));
 
 // ─── POST /api/auth/admin-login ───────────────────────────────────────────────
-router.post('/admin-login', async (req, res, next) => {
-  try {
-    const { email, password } = req.body;
+router.post('/admin-login', validate(loginSchema), asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
 
-    const user = await User.findOne({ email: email?.toLowerCase(), role: 'admin' }).select('+password');
-    if (!user || !(await user.comparePassword(password))) {
-      return res.status(401).json({ error: 'Invalid admin credentials.' });
-    }
-
-    sendAuthResponse(res, user);
-  } catch (err) {
-    next(err);
+  const user = await User.findOne({ email, role: 'admin' }).select('+password');
+  if (!user || !(await user.comparePassword(password))) {
+    return res.status(401).json({ error: 'Invalid admin credentials.' });
   }
-});
+
+  sendAuthResponse(res, user);
+}));
 
 // ─── GET /api/auth/me ─────────────────────────────────────────────────────────
-router.get('/me', protect, async (req, res, next) => {
-  try {
-    const user = await User.findById(req.user._id).populate('purchases.product', 'title coverImage');
-    res.json({ user });
-  } catch (err) {
-    next(err);
-  }
-});
+router.get('/me', protect, asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id).populate('purchases.product', 'title coverImage');
+  res.json({ user });
+}));
 
 // ─── PATCH /api/auth/update-profile ──────────────────────────────────────────
-router.patch('/update-profile', protect, async (req, res, next) => {
-  try {
-    const allowedFields = ['firstName', 'lastName', 'phone', 'country'];
-    const updates = {};
-    allowedFields.forEach(field => {
-      if (req.body[field] !== undefined) updates[field] = req.body[field];
-    });
-
-    const user = await User.findByIdAndUpdate(req.user._id, updates, {
-      new: true,
-      runValidators: true,
-    });
-    res.json({ user });
-  } catch (err) {
-    next(err);
-  }
-});
+router.patch('/update-profile', protect, validate(updateProfileSchema), asyncHandler(async (req, res) => {
+  const user = await User.findByIdAndUpdate(req.user._id, req.body, {
+    new: true,
+    runValidators: true,
+  });
+  res.json({ user });
+}));
 
 // ─── POST /api/auth/forgot-password ──────────────────────────────────────────
-router.post('/forgot-password', async (req, res, next) => {
-  try {
-    const user = await User.findOne({ email: req.body.email?.toLowerCase() });
-    if (!user) {
-      // Don't reveal if email exists
-      return res.json({ message: 'If that email is registered, a reset link has been sent.' });
-    }
-
-    const resetToken = user.createPasswordResetToken();
-    await user.save({ validateBeforeSave: false });
-
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
-
-    await sendPasswordResetEmail({ user, resetUrl });
-
-    res.json({ message: 'Password reset email sent.' });
-  } catch (err) {
-    next(err);
+router.post('/forgot-password', forgotPasswordLimiter, validate(forgotPasswordSchema), asyncHandler(async (req, res) => {
+  const user = await User.findOne({ email: req.body.email });
+  if (!user) {
+    return res.json({ message: 'If that email is registered, a reset link has been sent.' });
   }
-});
+
+  const resetToken = user.createPasswordResetToken();
+  await user.save({ validateBeforeSave: false });
+
+  const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+  await sendPasswordResetEmail({ user, resetUrl });
+
+  res.json({ message: 'If that email is registered, a reset link has been sent.' });
+}));
 
 // ─── POST /api/auth/reset-password/:token ────────────────────────────────────
-router.post('/reset-password/:token', async (req, res, next) => {
-  try {
-    const hashedToken = crypto
-      .createHash('sha256')
-      .update(req.params.token)
-      .digest('hex');
+router.post('/reset-password/:token', validate(resetPasswordSchema), asyncHandler(async (req, res) => {
+  const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
 
-    const user = await User.findOne({
-      passwordResetToken: hashedToken,
-      passwordResetExpires: { $gt: Date.now() },
-    });
+  const user = await User.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetExpires: { $gt: Date.now() },
+  });
 
-    if (!user) {
-      return res.status(400).json({ error: 'Token is invalid or has expired.' });
-    }
-
-    user.password = req.body.password;
-    user.passwordResetToken = undefined;
-    user.passwordResetExpires = undefined;
-    await user.save();
-
-    sendAuthResponse(res, user);
-  } catch (err) {
-    next(err);
+  if (!user) {
+    return res.status(400).json({ error: 'Token is invalid or has expired.' });
   }
-});
 
-// ─── POST /api/auth/setup-admin (one-time use with setup key) ─────────────────
-router.post('/setup-admin', setupAdminLimiter, async (req, res, next) => {
-  try {
-    if (req.body.setupKey !== process.env.ADMIN_SETUP_KEY) {
-      return res.status(403).json({ error: 'Invalid setup key.' });
-    }
-    const { firstName, lastName, email, password } = req.body;
-    const user = await User.create({ firstName, lastName, email, password, role: 'admin' });
-    sendAuthResponse(res, user, 201);
-  } catch (err) {
-    next(err);
+  user.password = req.body.password;
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+  await user.save();
+
+  sendAuthResponse(res, user);
+}));
+
+// ─── POST /api/auth/setup-admin ───────────────────────────────────────────────
+router.post('/setup-admin', setupAdminLimiter, asyncHandler(async (req, res) => {
+  if (req.body.setupKey !== process.env.ADMIN_SETUP_KEY) {
+    return res.status(403).json({ error: 'Invalid setup key.' });
   }
-});
+  const { firstName, lastName, email, password } = req.body;
+  const user = await User.create({ firstName, lastName, email, password, role: 'admin' });
+  sendAuthResponse(res, user, 201);
+}));
 
 module.exports = router;
