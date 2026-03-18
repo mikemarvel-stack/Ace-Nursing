@@ -131,6 +131,7 @@ export const customOrdersAPI = {
   submit: (data) => api.post('/custom-orders', data),
   getMine: () => api.get('/custom-orders/mine'),
   respond: (id, data) => api.post(`/custom-orders/${id}/respond`, data),
+  confirmReceipt: (id) => api.post(`/custom-orders/${id}/confirm-receipt`),
   requestRevision: (id, data) => api.post(`/custom-orders/${id}/revision`, data),
   // Admin
   getAll: (params) => api.get('/custom-orders', { params }),

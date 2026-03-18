@@ -125,21 +125,23 @@ function RedownloadButton({ orderId }) {
     finally { setLoading(false); }
   };
   return (
-    <div style={{ background: '#EBF0F8', border: '1px solid #C0D4F0', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
-      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--navy)', marginBottom: 8 }}>🏁 Assignment completed &amp; paid</p>
-      <button className="btn btn-primary btn-sm" onClick={handleRedownload} disabled={loading}>
-        {loading ? 'Generating link…' : '⬇ Re-download Assignment'}
-      </button>
-    </div>
+    <button className="btn btn-outline btn-sm" onClick={handleRedownload} disabled={loading}>
+      {loading ? 'Generating link…' : '⬇ Re-download'}
+    </button>
   );
 }
 
-function OrderCard({ order, onRespond, onRevision, onPayNow }) {
+function OrderCard({ order, onRespond, onRevision, onConfirmReceipt, onPayNow }) {
   const sm = STATUS_META[order.status] || STATUS_META.submitted;
   const [declining, setDeclining] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
   const [revisionNotes, setRevisionNotes] = useState('');
   const [showRevision, setShowRevision] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  const revisionsUsed = order.revisionsUsed ?? 0;
+  const revisionsRemaining = 3 - revisionsUsed;
+  const confirmed = !!order.delivery?.confirmedAt;
 
   return (
     <div className="card" style={{ padding: 22, marginBottom: 16 }}>
@@ -202,12 +204,72 @@ function OrderCard({ order, onRespond, onRevision, onPayNow }) {
         </div>
       )}
 
-      {/* Completed + paid — re-download */}
+      {/* Completed + paid — download, confirm receipt, then revisions */}
       {order.status === 'completed' && order.payment?.status === 'paid' && (
-        <RedownloadButton orderId={order._id} />
-      )}
+        <div style={{ background: '#EBF0F8', border: '1px solid #C0D4F0', borderRadius: 10, padding: '14px 16px', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: confirmed ? 12 : 0 }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--navy)' }}>
+              🏁 Paid &amp; completed
+              {confirmed && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: '#059669' }}>✔ Receipt confirmed</span>}
+            </p>
+            <RedownloadButton orderId={order._id} />
+          </div>
 
-      {/* Accept / Decline quote */}
+          {/* Confirm receipt CTA */}
+          {!confirmed && (
+            <div style={{ background: '#FEF9EC', border: '1px solid #F5E0A0', borderRadius: 8, padding: '10px 14px', marginTop: 10 }}>
+              <p style={{ fontSize: 13, color: '#7A5B00', marginBottom: 8 }}>
+                👀 Reviewed the work? Confirm receipt to unlock revision requests.
+              </p>
+              <button
+                className="btn btn-primary btn-sm"
+                style={{ background: '#C49A3C', borderColor: '#C49A3C' }}
+                disabled={confirming}
+                onClick={async () => {
+                  setConfirming(true);
+                  await onConfirmReceipt(order._id);
+                  setConfirming(false);
+                }}
+              >
+                {confirming ? 'Confirming…' : '✅ Confirm I’ve Reviewed the Work'}
+              </button>
+            </div>
+          )}
+
+          {/* Revision section — only after confirmation */}
+          {confirmed && (
+            <div style={{ borderTop: '1px solid #C0D4F0', paddingTop: 12, marginTop: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--navy)' }}>🔄 Revisions</p>
+                <span style={{
+                  fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
+                  background: revisionsRemaining > 0 ? '#D1FAE5' : '#FEE2E2',
+                  color: revisionsRemaining > 0 ? '#065F46' : '#991B1B',
+                }}>
+                  {revisionsRemaining} of 3 remaining
+                </span>
+              </div>
+              {revisionsRemaining === 0 ? (
+                <p style={{ fontSize: 13, color: 'var(--muted)' }}>All 3 revisions used. Contact support for further changes.</p>
+              ) : !showRevision ? (
+                <button className="btn btn-outline btn-sm" onClick={() => setShowRevision(true)}>🔄 Request Revision</button>
+              ) : (
+                <div>
+                  <textarea className="input" value={revisionNotes} onChange={e => setRevisionNotes(e.target.value)}
+                    placeholder="Describe exactly what needs to be revised…" rows={3}
+                    style={{ marginBottom: 10, resize: 'vertical' }} />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn btn-primary btn-sm" onClick={() => { onRevision(order._id, revisionNotes); setShowRevision(false); setRevisionNotes(''); }}>
+                      Submit Revision Request
+                    </button>
+                    <button className="btn btn-outline btn-sm" onClick={() => setShowRevision(false)}>Cancel</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
       {order.status === 'quoted' && (
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
           {!declining ? (
@@ -228,23 +290,6 @@ function OrderCard({ order, onRespond, onRevision, onPayNow }) {
         </div>
       )}
 
-      {/* Request revision */}
-      {order.status === 'delivered' && (
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, marginTop: 14 }}>
-          {!showRevision ? (
-            <button className="btn btn-outline btn-sm" onClick={() => setShowRevision(true)}>🔄 Request Revision</button>
-          ) : (
-            <div>
-              <textarea className="input" value={revisionNotes} onChange={e => setRevisionNotes(e.target.value)}
-                placeholder="Describe what needs to be revised…" rows={3} style={{ marginBottom: 10, resize: 'vertical' }} />
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn btn-primary btn-sm" onClick={() => { onRevision(order._id, revisionNotes); setShowRevision(false); }}>Submit Revision Request</button>
-                <button className="btn btn-outline btn-sm" onClick={() => setShowRevision(false)}>Cancel</button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
@@ -341,10 +386,18 @@ export default function CustomOrderPage() {
 
   const handleRevision = async (id, notes) => {
     try {
-      await customOrdersAPI.requestRevision(id, { notes });
-      toast.success('Revision request submitted.');
+      const res = await customOrdersAPI.requestRevision(id, { notes });
+      toast.success(`Revision request submitted. ${res.data.revisionsRemaining} revision(s) remaining.`);
       loadMyOrders();
-    } catch { toast.error('Failed to submit revision request.'); }
+    } catch (err) { toast.error(err.response?.data?.error || 'Failed to submit revision request.'); }
+  };
+
+  const handleConfirmReceipt = async (id) => {
+    try {
+      await customOrdersAPI.confirmReceipt(id);
+      toast.success('Receipt confirmed! You can now request up to 3 revisions.');
+      loadMyOrders();
+    } catch (err) { toast.error(err.response?.data?.error || 'Failed to confirm receipt.'); }
   };
 
   const handlePaid = (url) => {
@@ -445,7 +498,7 @@ export default function CustomOrderPage() {
               </div>
             ) : (
               myOrders.map(o => (
-                <OrderCard key={o._id} order={o} onRespond={handleRespond} onRevision={handleRevision} onPayNow={setPayingOrder} />
+                <OrderCard key={o._id} order={o} onRespond={handleRespond} onRevision={handleRevision} onConfirmReceipt={handleConfirmReceipt} onPayNow={setPayingOrder} />
               ))
             )}
           </div>

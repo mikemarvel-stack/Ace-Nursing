@@ -59,6 +59,7 @@
   },
   "jest": {
     "testEnvironment": "node",
+    "runInBand": true,
     "testPathIgnorePatterns": [
       "/node_modules/"
     ],

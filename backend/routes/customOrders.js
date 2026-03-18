@@ -117,7 +117,33 @@ router.post('/:id/respond', protect, asyncHandler(async (req, res) => {
   res.json({ success: true, order });
 }));
 
-// ── POST /api/custom-orders/:id/revision — user requests revision ─────────────
+// ── POST /api/custom-orders/:id/confirm-receipt ──────────────────────────────
+router.post('/:id/confirm-receipt', protect, asyncHandler(async (req, res) => {
+  const order = await CustomOrder.findOne({
+    _id: req.params.id,
+    $or: [{ user: req.user._id }, { 'customerInfo.email': req.user.email }],
+  });
+  if (!order) return res.status(404).json({ error: 'Order not found.' });
+  if (order.status !== 'completed') return res.status(400).json({ error: 'Order must be completed and paid before confirming receipt.' });
+  if (order.payment.status !== 'paid') return res.status(402).json({ error: 'Payment required before confirming receipt.' });
+  if (order.delivery.confirmedAt) return res.json({ success: true, order }); // idempotent
+
+  order.delivery.confirmedAt = new Date();
+  await order.save();
+
+  createNotification({
+    type: 'custom_order',
+    title: `Receipt Confirmed — #${order.orderNumber}`,
+    message: `${order.customerInfo.firstName} confirmed receipt of "${order.subject}". Up to 3 revisions are now available.`,
+    link: '/admin/custom-orders',
+    meta: { orderId: order._id },
+    userId: null,
+  });
+
+  res.json({ success: true, order });
+}));
+
+// ── POST /api/custom-orders/:id/revision ─────────────────────────────────────
 router.post('/:id/revision', protect, asyncHandler(async (req, res) => {
   const { notes } = req.body;
   const order = await CustomOrder.findOne({
@@ -125,23 +151,26 @@ router.post('/:id/revision', protect, asyncHandler(async (req, res) => {
     $or: [{ user: req.user._id }, { 'customerInfo.email': req.user.email }],
   });
   if (!order) return res.status(404).json({ error: 'Order not found.' });
-  if (!['delivered', 'completed'].includes(order.status)) return res.status(400).json({ error: 'Can only request revision on delivered orders.' });
-  if (order.payment.status === 'paid') return res.status(400).json({ error: 'Order is already paid and completed. Contact support for revisions.' });
+  if (order.status !== 'completed') return res.status(400).json({ error: 'Pay and confirm receipt before requesting a revision.' });
+  if (order.payment.status !== 'paid') return res.status(402).json({ error: 'Payment required before requesting a revision.' });
+  if (!order.delivery.confirmedAt) return res.status(400).json({ error: 'Please confirm you have received and reviewed the work before requesting a revision.' });
+  if (order.revisionsUsed >= 3) return res.status(400).json({ error: 'Maximum of 3 revisions reached. Please contact support for further changes.' });
 
   order.revisionRequests.push({ notes });
+  order.revisionsUsed += 1;
   order.status = 'revision_requested';
   await order.save();
 
   createNotification({
     type: 'custom_order',
-    title: `Revision Requested — #${order.orderNumber}`,
-    message: `${order.customerInfo.firstName} requested a revision.${notes ? ` Notes: ${notes.slice(0, 100)}` : ''}`,
+    title: `Revision ${order.revisionsUsed}/3 — #${order.orderNumber}`,
+    message: `${order.customerInfo.firstName} requested revision ${order.revisionsUsed} of 3.${notes ? ` Notes: ${notes.slice(0, 100)}` : ''}`,
     link: '/admin/custom-orders',
     meta: { orderId: order._id },
     userId: null,
   });
 
-  res.json({ success: true });
+  res.json({ success: true, revisionsUsed: order.revisionsUsed, revisionsRemaining: 3 - order.revisionsUsed });
 }));
 
 // ═══════════════════════════════════════════════════════════════════════════════

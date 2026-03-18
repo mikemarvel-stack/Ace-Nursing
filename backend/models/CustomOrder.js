@@ -62,13 +62,17 @@ const customOrderSchema = new mongoose.Schema(
 
     // ── Delivery ──────────────────────────────────────────────────────────────
     delivery: {
-      dueAt:       Date,
-      deliveredAt: Date,
-      fileKey:     String, // R2 object key — used to generate fresh signed URLs
+      dueAt:        Date,
+      deliveredAt:  Date,
+      confirmedAt:  Date,    // set when user clicks "Confirm Receipt"
+      fileKey:      String,
       originalName: String,
-      downloadUrl: String, // fallback / external link
-      notes:       String,
+      downloadUrl:  String,
+      notes:        String,
     },
+
+    // ── Revision tracking ──────────────────────────────────────────────
+    revisionsUsed: { type: Number, default: 0 }, // max 3
 
     // ── Revision ─────────────────────────────────────────────────────────────
     revisionRequests: [{
