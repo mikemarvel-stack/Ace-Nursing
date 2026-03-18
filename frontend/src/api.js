@@ -117,4 +117,18 @@ export const notificationsAPI = {
   markAllMineRead: () => api.patch('/notifications/mine/read-all'),
 };
 
+// ─── Custom Orders API ────────────────────────────────────────────────────────
+export const customOrdersAPI = {
+  submit: (data) => api.post('/custom-orders', data),
+  getMine: () => api.get('/custom-orders/mine'),
+  respond: (id, data) => api.post(`/custom-orders/${id}/respond`, data),
+  requestRevision: (id, data) => api.post(`/custom-orders/${id}/revision`, data),
+  // Admin
+  getAll: (params) => api.get('/custom-orders', { params }),
+  getStats: () => api.get('/custom-orders/stats'),
+  getOne: (id) => api.get(`/custom-orders/${id}`),
+  sendQuote: (id, data) => api.post(`/custom-orders/${id}/quote`, data),
+  update: (id, data) => api.patch(`/custom-orders/${id}`, data),
+};
+
 export default api;

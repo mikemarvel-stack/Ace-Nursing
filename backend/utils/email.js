@@ -203,3 +203,133 @@ exports.sendAdminOrderAlert = async ({ order }) => {
     html: emailWrapper(content),
   });
 };
+
+// ─── Email: Custom Order – User Confirmation ──────────────────────────────────
+exports.sendCustomOrderConfirmation = async ({ order }) => {
+  const content = `
+    <span class="badge" style="background:#DBEAFE;color:#1E40AF">📝 Request Received</span>
+    <h1 style="margin-top:16px">We've received your assignment request!</h1>
+    <p>Hi ${order.customerInfo.firstName}, thank you for submitting your custom assignment request. Our team will review it and send you a quote within <strong>24 hours</strong>.</p>
+    <div class="info-box">
+      <p>📋 Request #${order.orderNumber} · ${order.assignmentType} — "${order.subject}"</p>
+    </div>
+    <h2>Your Request Details</h2>
+    <table style="width:100%;font-size:14px;color:#555;border-collapse:collapse">
+      <tr><td style="padding:6px 0;color:#999;width:140px">Subject</td><td style="font-weight:600;color:#0C1B33">${order.subject}</td></tr>
+      <tr><td style="padding:6px 0;color:#999">Type</td><td style="font-weight:600;color:#0C1B33">${order.assignmentType}</td></tr>
+      <tr><td style="padding:6px 0;color:#999">Pages</td><td style="font-weight:600;color:#0C1B33">${order.pages || 'Not specified'}</td></tr>
+      <tr><td style="padding:6px 0;color:#999">Deadline</td><td style="font-weight:600;color:#0C1B33">${new Date(order.deadline).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}</td></tr>
+      <tr><td style="padding:6px 0;color:#999">Academic Level</td><td style="font-weight:600;color:#0C1B33">${order.academicLevel}</td></tr>
+      <tr><td style="padding:6px 0;color:#999">Citation Style</td><td style="font-weight:600;color:#0C1B33">${order.citationStyle}</td></tr>
+    </table>
+    ${order.attachmentNotes ? `<div class="info-box" style="background:#FEF3C7;border-color:#F59E0B"><p style="color:#92400E">📎 Attachment notes: ${order.attachmentNotes}</p></div>` : ''}
+    <p style="margin-top:20px">You'll receive an email with our quote shortly. You can also track your request in your <a href="${process.env.FRONTEND_URL}/account" style="color:#0C1B33;font-weight:600">account dashboard</a>.</p>
+    <p style="font-size:13px;color:#999">Questions? Reply to this email or contact support@acenursing.com</p>
+  `;
+  return sendWithRetry({
+    from: FROM,
+    to: order.customerInfo.email,
+    subject: `✅ Assignment Request Received — #${order.orderNumber}`,
+    html: emailWrapper(content),
+  });
+};
+
+// ─── Email: Custom Order – Admin Alert ───────────────────────────────────────
+exports.sendCustomOrderAdminAlert = async ({ order }) => {
+  if (!process.env.ADMIN_EMAIL) return;
+  const content = `
+    <h1>New Custom Assignment Request 📝</h1>
+    <p><strong>From:</strong> ${order.customerInfo.firstName} ${order.customerInfo.lastName} (${order.customerInfo.email})</p>
+    <p><strong>Request #:</strong> ${order.orderNumber}</p>
+    <p><strong>Subject:</strong> ${order.subject}</p>
+    <p><strong>Type:</strong> ${order.assignmentType} · ${order.pages || '?'} pages · ${order.academicLevel}</p>
+    <p><strong>Deadline:</strong> ${new Date(order.deadline).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}</p>
+    <p><strong>Requirements:</strong></p>
+    <div style="background:#F5F5F5;border-radius:8px;padding:14px;font-size:14px;color:#333;white-space:pre-wrap">${order.requirements}</div>
+    ${order.attachmentNotes ? `<p style="margin-top:12px"><strong>Attachment notes:</strong> ${order.attachmentNotes}</p>` : ''}
+    <div style="text-align:center;margin:28px 0">
+      <a href="${process.env.FRONTEND_URL}/admin/custom-orders" class="btn">Review &amp; Send Quote →</a>
+    </div>
+  `;
+  return sendWithRetry({
+    from: FROM,
+    to: process.env.ADMIN_EMAIL,
+    subject: `New Assignment Request #${order.orderNumber} — ${order.subject}`,
+    html: emailWrapper(content),
+  });
+};
+
+// ─── Email: Custom Order – Quote to User ─────────────────────────────────────
+exports.sendCustomOrderQuote = async ({ order }) => {
+  const { price, daysToComplete, adminNotes, expiresAt } = order.quote;
+  const dueDate = new Date();
+  dueDate.setDate(dueDate.getDate() + daysToComplete);
+  const content = `
+    <span class="badge" style="background:#FEF3C7;color:#92400E">💰 Quote Ready</span>
+    <h1 style="margin-top:16px">Your Assignment Quote is Ready</h1>
+    <p>Hi ${order.customerInfo.firstName}, we've reviewed your request and prepared a quote for you.</p>
+    <div style="background:#F0F6FF;border:2px solid #C0D4F0;border-radius:14px;padding:24px;margin:20px 0;text-align:center">
+      <div style="font-size:13px;color:#666;margin-bottom:6px">Quoted Price</div>
+      <div style="font-size:42px;font-weight:800;color:#0C1B33">$${price.toFixed(2)}</div>
+      <div style="font-size:14px;color:#666;margin-top:8px">⏱ Delivery in <strong>${daysToComplete} day(s)</strong> after acceptance</div>
+      <div style="font-size:13px;color:#999;margin-top:4px">Estimated delivery: ${dueDate.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}</div>
+    </div>
+    ${adminNotes ? `<div class="info-box"><p>📝 Notes from our team: ${adminNotes}</p></div>` : ''}
+    <p style="color:#DC2626;font-size:13px">⚠️ This quote expires on ${new Date(expiresAt).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})}. Please respond before then.</p>
+    <div style="text-align:center;margin:28px 0;display:flex;gap:12px;justify-content:center">
+      <a href="${process.env.FRONTEND_URL}/account" class="btn btn-gold">✅ Accept Quote</a>
+      <a href="${process.env.FRONTEND_URL}/account" class="btn" style="background:#EEE;color:#333">❌ Decline</a>
+    </div>
+    <p style="font-size:13px;color:#999">Log in to your account to accept or decline this quote. Request #${order.orderNumber}</p>
+  `;
+  return sendWithRetry({
+    from: FROM,
+    to: order.customerInfo.email,
+    subject: `💰 Your Quote is Ready — #${order.orderNumber} ($${price.toFixed(2)})`,
+    html: emailWrapper(content),
+  });
+};
+
+// ─── Email: Custom Order – Accepted Confirmation ──────────────────────────────
+exports.sendCustomOrderAccepted = async ({ order }) => {
+  const content = `
+    <span class="badge">✅ Order Confirmed</span>
+    <h1 style="margin-top:16px">Assignment Accepted — Work Begins Now!</h1>
+    <p>Hi ${order.customerInfo.firstName}, you've accepted the quote for your assignment. Our team will begin working on it immediately.</p>
+    <div class="info-box">
+      <p>📋 #${order.orderNumber} · $${order.quote.price.toFixed(2)} · Due: ${new Date(order.delivery.dueAt).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}</p>
+    </div>
+    <p>You'll receive a notification and email when your assignment is delivered. You can track progress in your <a href="${process.env.FRONTEND_URL}/account" style="color:#0C1B33;font-weight:600">account dashboard</a>.</p>
+    <p style="font-size:13px;color:#999">Need to share files? Reply to this email with your attachments.</p>
+  `;
+  return sendWithRetry({
+    from: FROM,
+    to: order.customerInfo.email,
+    subject: `✅ Assignment Confirmed — #${order.orderNumber}`,
+    html: emailWrapper(content),
+  });
+};
+
+// ─── Email: Custom Order – Delivered ─────────────────────────────────────────
+exports.sendCustomOrderDelivered = async ({ order, downloadUrl }) => {
+  const content = `
+    <span class="badge" style="background:#D1FAE5;color:#065F46">🎉 Delivered</span>
+    <h1 style="margin-top:16px">Your Assignment is Ready!</h1>
+    <p>Hi ${order.customerInfo.firstName}, your assignment "${order.subject}" has been completed and is ready for download.</p>
+    ${downloadUrl ? `
+    <div style="text-align:center;margin:28px 0">
+      <a href="${downloadUrl}" class="btn btn-gold">⬇ Download Assignment</a>
+    </div>` : ''}
+    <div class="info-box">
+      <p>📋 Request #${order.orderNumber} · Delivered ${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}</p>
+    </div>
+    <p>If you need any revisions, please log in to your <a href="${process.env.FRONTEND_URL}/account" style="color:#0C1B33;font-weight:600">account</a> and request a revision within 7 days.</p>
+    <p style="font-size:13px;color:#999">Satisfied? We'd love a review! Reply to this email with your feedback.</p>
+  `;
+  return sendWithRetry({
+    from: FROM,
+    to: order.customerInfo.email,
+    subject: `🎉 Your Assignment is Delivered — #${order.orderNumber}`,
+    html: emailWrapper(content),
+  });
+};

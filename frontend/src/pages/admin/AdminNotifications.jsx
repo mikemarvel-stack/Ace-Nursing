@@ -9,6 +9,7 @@ const TYPE_META = {
   contact_message: { icon: '✉️', color: '#92400E', bg: '#FEF3C7' },
   order_status:    { icon: '🔄', color: '#5B21B6', bg: '#EDE9FE' },
   new_review:      { icon: '⭐', color: '#92400E', bg: '#FFF7ED' },
+  custom_order:    { icon: '📝', color: '#5B21B6', bg: '#EDE9FE' },
   system:          { icon: '⚙️', color: '#374151', bg: '#F3F4F6' },
 };
 
@@ -150,6 +151,7 @@ export default function AdminNotifications() {
           { key: 'new_user', label: '👤 Signups' },
           { key: 'contact_message', label: '✉️ Messages' },
           { key: 'new_review', label: '⭐ Reviews' },
+          { key: 'custom_order', label: '📝 Assignments' },
         ].map(({ key, label }) => (
           <button key={key} onClick={() => setFilter(key)}
             style={{ padding: '6px 16px', borderRadius: 50, fontSize: 13, fontWeight: filter === key ? 700 : 400, background: filter === key ? 'var(--navy)' : '#fff', color: filter === key ? '#fff' : 'var(--muted)', border: `1.5px solid ${filter === key ? 'var(--navy)' : 'var(--border)'}`, cursor: 'pointer', transition: 'all 0.2s' }}>

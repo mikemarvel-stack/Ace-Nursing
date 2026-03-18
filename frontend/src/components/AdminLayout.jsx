@@ -9,6 +9,7 @@ const LINKS = [
   { to: '/admin/upload', label: 'Upload Material', icon: '⬆️', end: false },
   { to: '/admin/products', label: 'Manage Products', icon: '📦', end: false },
   { to: '/admin/orders', label: 'Orders', icon: '🧾', end: false },
+  { to: '/admin/custom-orders', label: 'Custom Orders', icon: '📝', end: false },
   { to: '/admin/notifications', label: 'Notifications', icon: '🔔', end: false },
 ];
 

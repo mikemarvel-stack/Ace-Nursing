@@ -22,6 +22,7 @@ const paymentRoutes = require('./routes/payments');
 const uploadRoutes = require('./routes/upload');
 const notificationRoutes = require('./routes/notifications');
 const sitemapRoutes = require('./routes/sitemap');
+const customOrderRoutes = require('./routes/customOrders');
 
 const app = express();
 app.disable('x-powered-by');
@@ -146,6 +147,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/custom-orders', customOrderRoutes);
 app.use('/', sitemapRoutes);
 
 // ─── Health Check ─────────────────────────────────────────────────────────────

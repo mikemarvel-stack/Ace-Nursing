@@ -28,6 +28,7 @@ const AccountPage       = lazy(() => import('./pages/AccountPage'));
 const ContactPage       = lazy(() => import('./pages/ContactPage'));
 const FAQPage           = lazy(() => import('./pages/FAQPage'));
 const PolicyPage        = lazy(() => import('./pages/PolicyPage'));
+const CustomOrderPage   = lazy(() => import('./pages/CustomOrderPage'));
 
 // Admin pages — never loaded for regular users
 const AdminDashboard    = lazy(() => import('./pages/admin/AdminDashboard'));
@@ -35,6 +36,7 @@ const AdminProducts     = lazy(() => import('./pages/admin/AdminProducts'));
 const AdminUpload       = lazy(() => import('./pages/admin/AdminUpload'));
 const AdminOrders       = lazy(() => import('./pages/admin/AdminOrders'));
 const AdminNotifications = lazy(() => import('./pages/admin/AdminNotifications'));
+const AdminCustomOrders  = lazy(() => import('./pages/admin/AdminCustomOrders'));
 
 // ─── Page loading fallback ────────────────────────────────────────────────────
 function PageLoader() {
@@ -119,6 +121,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 <Route path="/contact" element={<ContactPage />} />
                 <Route path="/faq" element={<FAQPage />} />
                 <Route path="/info/:slug" element={<PolicyPage />} />
+                <Route path="/custom-order" element={<CustomOrderPage />} />
                 <Route
                   path="/account"
                   element={
@@ -143,6 +146,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 <Route path="upload" element={<AdminUpload />} />
                 <Route path="orders" element={<AdminOrders />} />
                 <Route path="notifications" element={<AdminNotifications />} />
+                <Route path="custom-orders" element={<AdminCustomOrders />} />
               </Route>
 
               <Route path="*" element={<Navigate to="/" replace />} />

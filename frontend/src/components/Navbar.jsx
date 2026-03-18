@@ -140,6 +140,7 @@ export default function Navbar() {
           </div>
 
           <Link to="/" style={linkStyle('/')}>Home</Link>
+          <Link to="/custom-order" style={linkStyle('/custom-order')}>Custom Orders</Link>
 
           <div ref={materialsRef} style={{ position: 'relative' }}>
             <button
@@ -313,6 +314,7 @@ export default function Navbar() {
             {[
               { label: 'Home', path: '/' },
               { label: 'All Materials', path: '/shop' },
+              { label: 'Custom Orders', path: '/custom-order' },
               { label: 'Study Guides', path: '/shop/study-guides' },
               { label: 'Flashcards', path: '/shop/flashcards' },
               { label: 'Reference Cards', path: '/shop/reference-cards' },
