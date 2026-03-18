@@ -3,11 +3,13 @@
 [![CI](https://github.com/mikemarvel-stack/Ace-Nursing/actions/workflows/ci.yml/badge.svg)](https://github.com/mikemarvel-stack/Ace-Nursing/actions/workflows/ci.yml)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-20-brightgreen.svg)](.nvmrc)
+[![Tests](https://img.shields.io/badge/tests-21%20passing-brightgreen.svg)](backend/__tests__)
 [![npm audit](https://img.shields.io/badge/vulnerabilities-0-brightgreen.svg)](backend/package.json)
 
-A full-stack e-commerce platform for premium nursing study materials. Students browse, purchase, and instantly download PDF study guides, flashcards, and reference materials. Payments are handled via PayPal, files are stored privately on AWS S3, and order confirmations with download links are delivered by email.
+A full-stack e-commerce platform for premium nursing study materials. Students browse, purchase, and instantly download PDF study guides, flashcards, and reference materials. Custom assignment orders are also supported — students submit requirements, receive a quote, pay, and download their completed work. Payments are handled via PayPal, files are stored privately on Cloudflare R2, and all transactional emails are delivered by Resend.
 
-**Live demo:** [acenursing.com](https://acenursing.com) &nbsp;|&nbsp; **Backend API:** [acenursing-backend.onrender.com/api/health](https://acenursing-backend.onrender.com/api/health)
+**Repository:** [github.com/mikemarvel-stack/Ace-Nursing](https://github.com/mikemarvel-stack/Ace-Nursing)  
+**Live demo:** [acenursing.com](https://acenursing.com) &nbsp;|&nbsp; **Backend API:** [ace-nursing.onrender.com/api/health](https://ace-nursing.onrender.com/api/health)
 
 ---
 
@@ -20,8 +22,9 @@ A full-stack e-commerce platform for premium nursing study materials. Students b
 - [Docker](#docker)
 - [Testing](#testing)
 - [API Reference](#api-reference)
+- [Custom Orders](#custom-orders)
 - [PayPal Integration](#paypal-integration)
-- [AWS S3 Setup](#aws-s3-setup)
+- [Cloudflare R2 Setup](#cloudflare-r2-setup)
 - [Email Setup](#email-setup)
 - [Admin Panel](#admin-panel)
 - [Security](#security)
@@ -33,7 +36,8 @@ A full-stack e-commerce platform for premium nursing study materials. Students b
 ## Features
 
 **Customer-facing**
-- Browse and search nursing study materials by category, price, and rating
+- Browse and search nursing study materials across 19 curriculum-aligned categories
+- Grouped category navigation — By Program Level, By Course, Specialty Topics
 - Slide-in cart with persistent state across sessions
 - 2-step checkout with PayPal (sandbox + live)
 - Instant PDF download after payment — files auto-download on the order confirmation page
@@ -41,18 +45,30 @@ A full-stack e-commerce platform for premium nursing study materials. Students b
 - User accounts with order history and re-download access
 - Product reviews and ratings
 - Contact form, FAQ, and policy pages
+- Live chat via Tawk.to
+
+**Custom assignment orders** (`/custom-order`)
+- Submit a custom nursing assignment request — free, no commitment
+- Receive a quote within 24 hours; accept or decline with a 48-hour expiry window
+- Countdown timer shows time remaining until delivery deadline
+- Pay via PayPal after the admin delivers the completed work
+- Confirm receipt after reviewing, then request up to **3 free revisions**
+- Re-download the assignment at any time after payment
+- Full order history and status tracking in the My Orders tab
 
 **Admin panel** (`/admin`)
 - Dashboard with revenue stats and recent orders
-- Upload products directly to AWS S3 (PDF + cover image)
-- Manage and edit the product catalogue
+- Upload products directly to Cloudflare R2 (PDF + cover image)
+- Manage and edit the product catalogue with grouped category dropdowns
 - View and update order statuses
-- Real-time notifications for new orders, signups, and contact messages
+- Custom orders management — send quotes, upload completed files, mark as delivered
+- File picker with upload progress for delivering custom assignments
+- Real-time notifications for new orders, signups, contact messages, and custom order events
 - Expand contact messages inline and reply via email in one click
 
 **Platform**
 - JWT authentication with role-based access control
-- Zod request validation on all API inputs — structured 400 errors
+- Zod request validation on all API inputs — structured 400 errors (Zod v4 compatible)
 - Structured JSON logging with daily log rotation (Winston)
 - OpenTelemetry tracing support
 - AWS Secrets Manager integration for production secrets
@@ -65,16 +81,17 @@ A full-stack e-commerce platform for premium nursing study materials. Students b
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 18, React Router 6, Zustand, Vite 8 |
+| Frontend | React 18, React Router 6, Zustand, Vite |
 | Payments | PayPal JS SDK (`@paypal/react-paypal-js`) + PayPal REST API |
 | Backend | Node.js 20, Express 4, Mongoose 8 |
-| Validation | Zod |
+| Validation | Zod (v4 compatible) |
 | Database | MongoDB (local or Atlas) |
-| Storage | AWS S3 — private bucket with pre-signed URLs |
+| Storage | Cloudflare R2 — private bucket with pre-signed URLs |
 | Email | Resend |
 | Auth | JWT (Bearer token, 7-day expiry) |
 | Logging | Winston + daily rotate file |
 | Tracing | OpenTelemetry (optional, OTLP HTTP export) |
+| Live Chat | Tawk.to |
 | CI | GitHub Actions (lint + test + build) |
 | Deployment | Render (backend) + Vercel (frontend) / Docker Compose |
 
@@ -87,24 +104,29 @@ acenursing/
 ├── .github/workflows/ci.yml     # Lint + tests + build on every push
 ├── .nvmrc                        # Node 20
 ├── backend/
-│   ├── __tests__/                # Jest integration tests
+│   ├── __tests__/
+│   │   ├── health.test.js        # Health check
+│   │   ├── auth.test.js          # Register + login
+│   │   └── payments.test.js      # Payments, download tokens, custom orders (18 tests)
 │   ├── config/
-│   │   ├── aws.js                # S3 client setup
+│   │   ├── aws.js                # R2 / S3 client setup
 │   │   └── paypal.js             # PayPal REST API helpers
 │   ├── middleware/
 │   │   ├── auth.js               # protect / restrictTo / optionalAuth / signToken
 │   │   └── requestLogger.js      # Structured HTTP request logging
 │   ├── models/
 │   │   ├── User.js               # User schema, bcrypt hashing, purchases
-│   │   ├── Product.js            # Product schema, auto-slug, reviews
+│   │   ├── Product.js            # Product schema, auto-slug, reviews, 19 categories
 │   │   ├── Order.js              # Order schema, auto order number
+│   │   ├── CustomOrder.js        # Custom assignment schema, quote, delivery, revisions
 │   │   └── Notification.js       # Admin notification schema
 │   ├── routes/
 │   │   ├── auth.js               # Register, login, profile, password reset
 │   │   ├── products.js           # CRUD, search, pagination, reviews
-│   │   ├── payments.js           # PayPal create/capture, download tokens, signed URLs
+│   │   ├── payments.js           # PayPal create/capture, download tokens, custom order payments
+│   │   ├── customOrders.js       # Custom assignment lifecycle — submit, quote, deliver, revisions
 │   │   ├── orders.js             # Admin order management
-│   │   ├── upload.js             # S3 file upload (PDF + image)
+│   │   ├── upload.js             # R2 file upload (PDF, image, custom order files)
 │   │   └── notifications.js      # Admin notifications + public contact endpoint
 │   ├── scripts/seed.js           # Seed 12 sample products + admin user
 │   ├── utils/
@@ -112,7 +134,7 @@ acenursing/
 │   │   ├── email.js              # Resend email templates
 │   │   ├── logger.js             # Winston logger
 │   │   ├── notifications.js      # createNotification helper
-│   │   ├── s3.js                 # S3 upload / signed URL / delete helpers
+│   │   ├── s3.js                 # R2 upload / signed URL / delete helpers
 │   │   ├── secrets.js            # AWS Secrets Manager loader
 │   │   ├── telemetry.js          # OpenTelemetry init/shutdown
 │   │   └── validation.js         # Zod schemas + validate() middleware
@@ -123,21 +145,23 @@ acenursing/
 └── frontend/
     ├── public/favicon.svg
     └── src/
+        ├── categories.js             # Shared 19-category taxonomy + CATEGORY_GROUPS
         ├── components/
-        │   ├── Navbar.jsx            # Sticky nav, cart badge, auth state
-        │   ├── Footer.jsx            # Links, social, payment badges
+        │   ├── Navbar.jsx            # Sticky nav, grouped category dropdown, cart badge
+        │   ├── Footer.jsx            # 5-column layout with category links
         │   ├── Layout.jsx            # Public page wrapper (Navbar + Footer)
         │   ├── CartDrawer.jsx        # Slide-in cart
         │   ├── ProductCard.jsx       # Shop grid card
         │   └── AdminLayout.jsx       # Admin sidebar + topbar
         ├── pages/
         │   ├── HomePage.jsx          # Hero, featured products, testimonials
-        │   ├── ShopPage.jsx          # Full shop with search, filters, pagination
+        │   ├── ShopPage.jsx          # Full shop with grouped category pills + filters
         │   ├── ProductPage.jsx       # Product detail + reviews
         │   ├── CheckoutPage.jsx      # 2-step checkout + PayPal Buttons
         │   ├── OrderSuccessPage.jsx  # Confirmation + auto-download
         │   ├── LoginPage.jsx         # Login + Register tabs
         │   ├── AccountPage.jsx       # Order history + profile settings
+        │   ├── CustomOrderPage.jsx   # Custom assignment request + My Orders + Pay & Download
         │   ├── ContactPage.jsx       # Contact form → admin notifications
         │   ├── FAQPage.jsx
         │   ├── PolicyPage.jsx        # Privacy, terms, refund policies
@@ -146,6 +170,7 @@ acenursing/
         │       ├── AdminUpload.jsx
         │       ├── AdminProducts.jsx
         │       ├── AdminOrders.jsx
+        │       ├── AdminCustomOrders.jsx  # Quote, file upload, deliver, revision tracking
         │       └── AdminNotifications.jsx
         ├── api.js       # Axios instance + all API method groups
         ├── store.js     # Zustand cart + auth stores (persisted)
@@ -163,7 +188,7 @@ acenursing/
 - npm 9+
 - MongoDB (local or [MongoDB Atlas](https://www.mongodb.com/atlas))
 - A [PayPal Developer](https://developer.paypal.com) sandbox app
-- An [AWS account](https://aws.amazon.com) with an S3 bucket
+- A [Cloudflare R2](https://developers.cloudflare.com/r2/) bucket (or any S3-compatible storage)
 - A [Resend](https://resend.com) account with a verified domain
 
 ### Installation
@@ -192,7 +217,7 @@ cd backend
 npm run seed
 ```
 
-Creates 12 sample products and a default admin account. Credentials are printed to the console.
+Creates 12 sample products across the new category taxonomy and a default admin account. Credentials are printed to the console.
 
 > ⚠️ Change the admin password immediately after first login. The seed script exits if `NODE_ENV=production`.
 
@@ -244,7 +269,15 @@ cd backend
 npm test
 ```
 
-Tests run against an in-memory MongoDB instance (`mongodb-memory-server`) — no real database needed. Coverage is enforced via a threshold in `package.json`.
+Tests run against an in-memory MongoDB instance (`mongodb-memory-server`) — no real database needed. Jest runs in `--runInBand` mode so all suites share one DB instance. Coverage is enforced via a threshold in `package.json`.
+
+**21 tests across 3 suites:**
+
+| Suite | Tests |
+|---|---|
+| `health.test.js` | Health check endpoint |
+| `auth.test.js` | Register + login |
+| `payments.test.js` | Zod validation, inactive products, download token 404/410, auth guards, custom order submit/mine/payment/re-download |
 
 ### CI Pipeline
 
@@ -294,8 +327,26 @@ All endpoints are prefixed with `/api`.
 |---|---|---|---|
 | POST | `/paypal/create-order` | Optional | Create PayPal order + internal order record |
 | POST | `/paypal/capture` | Optional | Capture payment, generate download tokens |
-| GET | `/download/:token` | — | Validate token → redirect to signed S3 URL |
+| GET | `/download/:token` | — | Validate token → redirect to signed R2 URL |
 | GET | `/orders` | JWT | Get current user's order history |
+| POST | `/paypal/create-custom-order` | JWT | Create PayPal order for a delivered custom assignment |
+| POST | `/paypal/capture-custom-order` | JWT | Capture payment, mark custom order paid, return signed download URL |
+| GET | `/custom-order/:id/download` | JWT | Re-generate signed download URL for a paid custom order |
+
+### Custom Orders — `/api/custom-orders`
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/` | Optional | Submit a new custom assignment request |
+| GET | `/mine` | JWT | Get current user's custom orders |
+| POST | `/:id/respond` | JWT | Accept or decline a quote |
+| POST | `/:id/confirm-receipt` | JWT | Confirm work received — unlocks revision requests |
+| POST | `/:id/revision` | JWT | Request a revision (requires paid + confirmed; max 3) |
+| GET | `/stats` | Admin | Order counts by status |
+| GET | `/` | Admin | List all custom orders with filters |
+| GET | `/:id` | Admin | Get single custom order |
+| POST | `/:id/quote` | Admin | Send a price quote to the customer |
+| PATCH | `/:id` | Admin | Update status, notes, or delivery details |
 
 ### Orders — `/api/orders` (Admin)
 
@@ -313,7 +364,8 @@ All endpoints are prefixed with `/api`.
 | POST | `/product-full` | Upload PDF + cover image, create product |
 | POST | `/pdf` | Upload PDF only |
 | POST | `/image` | Upload cover image only |
-| DELETE | `/file` | Delete a file from S3 by key |
+| POST | `/custom-order-file` | Upload completed assignment file (PDF, Word, PPT, Excel, ZIP, images) |
+| DELETE | `/file` | Delete a file from R2 by key |
 
 ### Notifications — `/api/notifications`
 
@@ -327,6 +379,27 @@ All endpoints are prefixed with `/api`.
 | PATCH | `/:id/read` | Admin | Mark admin notification as read |
 | PATCH | `/read-all` | Admin | Mark all admin notifications as read |
 | DELETE | `/:id` | Admin | Delete a notification |
+
+---
+
+## Custom Orders
+
+The custom assignment flow is a complete order lifecycle separate from the product shop:
+
+```
+Submit request → Admin reviews → Admin sends quote (48h expiry)
+→ Customer accepts → Admin works → Admin uploads file + marks delivered
+→ Customer pays via PayPal → Customer downloads
+→ Customer confirms receipt → Customer requests revisions (up to 3)
+→ Admin re-delivers → Completed
+```
+
+**Key rules:**
+- Revisions are only available after `payment.status === 'paid'` AND `delivery.confirmedAt` is set
+- Maximum 3 revisions per order — tracked via `revisionsUsed` counter
+- Each re-delivery after a revision resets the download; the customer must confirm receipt again before requesting the next revision
+- Download URLs are generated fresh from the R2 `fileKey` on every request — signed URLs never expire in the database
+- `POST /confirm-receipt` is idempotent — safe to call multiple times
 
 ---
 
@@ -347,26 +420,31 @@ All endpoints are prefixed with `/api`.
 
 ---
 
-## AWS S3 Setup
+## Cloudflare R2 Setup
 
-1. Create a **private** S3 bucket (e.g. `acenursing-materials`) — block all public access
-2. Create an IAM user with the scoped policy below — do **not** use `AmazonS3FullAccess`
-3. Add the IAM credentials to `backend/.env`
+AceNursing uses Cloudflare R2 (S3-compatible) for all file storage. The `uploadToS3` / `getSignedDownloadUrl` helpers in `backend/utils/s3.js` work transparently with any S3-compatible endpoint.
 
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
-      "Resource": "arn:aws:s3:::acenursing-materials/*"
-    }
-  ]
-}
+1. Create a **private** R2 bucket in the Cloudflare dashboard
+2. Create an R2 API token with `Object Read & Write` permissions
+3. Add the credentials to `backend/.env`:
+
+```env
+AWS_ACCESS_KEY_ID=your_r2_access_key
+AWS_SECRET_ACCESS_KEY=your_r2_secret_key
+AWS_REGION=auto
+AWS_S3_BUCKET=your-bucket-name
+AWS_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
 ```
 
 All downloads use pre-signed URLs — files are never publicly accessible.
+
+**Folder structure in R2:**
+
+| Folder | Contents |
+|---|---|
+| `pdfs/` | Product PDF study materials |
+| `covers/` | Product cover images |
+| `custom-orders/` | Completed custom assignment files |
 
 ### Optional: AWS Secrets Manager
 
@@ -384,10 +462,15 @@ All downloads use pre-signed URLs — files are never publicly accessible.
 
 | Trigger | Recipient | Content |
 |---|---|---|
-| Successful order | Customer | Order confirmation + download links |
+| Successful product order | Customer | Order confirmation + download links |
 | New registration | Customer | Welcome email |
 | Password reset | Customer | Reset link (expires 10 minutes) |
-| New order | Admin | Order alert with summary |
+| New product order | Admin | Order alert with summary |
+| Custom order submitted | Customer | Request confirmation + order number |
+| Custom order submitted | Admin | Full request details + review link |
+| Quote sent | Customer | Price, delivery days, accept/decline CTA |
+| Quote accepted | Customer | Confirmation + expected delivery date |
+| Assignment delivered | Customer | Pay & Download CTA linking to `/custom-order?pay=ORDER_ID` |
 
 ---
 
@@ -399,8 +482,9 @@ Access at `/admin`. Requires `role: admin`.
 |---|---|---|
 | Dashboard | `/admin` | Revenue stats, order counts, recent activity |
 | Products | `/admin/products` | Edit, feature, activate/deactivate, delete |
-| Upload | `/admin/upload` | Upload new products (PDF + cover image) to S3 |
+| Upload | `/admin/upload` | Upload new products (PDF + cover image) to R2 |
 | Orders | `/admin/orders` | View all orders, update status |
+| Custom Orders | `/admin/custom-orders` | Send quotes, upload files, mark delivered, track revisions |
 | Notifications | `/admin/notifications` | Orders, signups, contact messages with inline reply |
 
 ---
@@ -416,10 +500,13 @@ Access at `/admin`. Requires `role: admin`.
 | Input sanitization | `express-mongo-sanitize` prevents NoSQL injection |
 | HTTP headers | Helmet with Content-Security-Policy (PayPal domains whitelisted) |
 | CORS | Restricted to `FRONTEND_URL` in production |
-| File downloads | Private S3 bucket, pre-signed URLs only — never public |
+| File downloads | Private R2 bucket, pre-signed URLs only — never public |
+| File type validation | Custom order uploads restricted to PDF, Word, PPT, Excel, ZIP, images |
 | Download tokens | Stored as SHA-256 hashes, compared with `timingSafeEqual` |
 | Price validation | Total calculated server-side; client prices are ignored |
 | Order ownership | Logged-in users can only capture their own orders |
+| Revision gate | Revisions require payment + confirmed receipt + ≤ 3 uses |
+| Idempotent capture | `ORDER_ALREADY_CAPTURED` PayPal errors handled gracefully |
 | Env var validation | Server exits on startup if any required variable is missing |
 | Seed script | Exits immediately if `NODE_ENV=production` |
 | Error boundary | React `ErrorBoundary` catches render crashes app-wide |
@@ -437,7 +524,7 @@ Access at `/admin`. Requires `role: admin`.
 `vercel.json` is included with SPA rewrite rules. Import the repo in Vercel, set root directory to `frontend/`, and add:
 
 ```
-VITE_API_URL=https://your-backend.onrender.com/api
+VITE_API_URL=https://ace-nursing.onrender.com/api
 VITE_PAYPAL_CLIENT_ID=your_live_paypal_client_id
 ```
 
@@ -447,11 +534,12 @@ VITE_PAYPAL_CLIENT_ID=your_live_paypal_client_id
 - [ ] `JWT_SECRET` is at least 32 random characters
 - [ ] `PAYPAL_MODE=live` with live credentials
 - [ ] `FRONTEND_URL` set to your actual domain
-- [ ] S3 bucket has public access blocked
-- [ ] IAM user has a scoped policy (not `FullAccess`)
+- [ ] R2 bucket has public access blocked
+- [ ] R2 API token scoped to the bucket only
 - [ ] Admin password changed from the seed default
 - [ ] `RESEND_API_KEY` set with a verified sending domain
 - [ ] `TRUST_PROXY=true` if behind a reverse proxy (Render sets this automatically)
+- [ ] Tawk.to `TAWK_PROPERTY_ID` replaced with your real property ID in `frontend/index.html`
 
 ---
 
@@ -467,10 +555,11 @@ VITE_PAYPAL_CLIENT_ID=your_live_paypal_client_id
 | `PAYPAL_CLIENT_ID` | ✅ | PayPal app client ID |
 | `PAYPAL_CLIENT_SECRET` | ✅ | PayPal app secret |
 | `PAYPAL_MODE` | ✅ | `sandbox` or `live` |
-| `AWS_ACCESS_KEY_ID` | ✅ | IAM user access key |
-| `AWS_SECRET_ACCESS_KEY` | ✅ | IAM user secret key |
-| `AWS_REGION` | ✅ | S3 bucket region (e.g. `us-east-1`) |
-| `AWS_S3_BUCKET` | ✅ | S3 bucket name |
+| `AWS_ACCESS_KEY_ID` | ✅ | R2 access key |
+| `AWS_SECRET_ACCESS_KEY` | ✅ | R2 secret key |
+| `AWS_REGION` | ✅ | `auto` for R2, or region for AWS S3 |
+| `AWS_S3_BUCKET` | ✅ | R2 / S3 bucket name |
+| `AWS_ENDPOINT` | — | R2 endpoint URL (required for Cloudflare R2) |
 | `RESEND_API_KEY` | ✅ | Resend API key |
 | `FROM_EMAIL` | ✅ | Sender address (e.g. `orders@acenursing.com`) |
 | `FRONTEND_URL` | ✅ | Frontend origin for CORS + email links |
@@ -495,4 +584,4 @@ VITE_PAYPAL_CLIENT_ID=your_live_paypal_client_id
 
 ## Support
 
-Email: support@acenursing.com
+Email: supportacenursing@gmail.com
