@@ -9,7 +9,7 @@ export default function AdminProducts() {
   const [deletingId, setDeletingId] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [form, setForm] = useState({ title: '', description: '', category: 'Study Guides', price: 0, originalPrice: 0, badge: '', emoji: '📘', isActive: true, featured: false });
+  const [form, setForm] = useState({ title: '', description: '', category: 'Study Guides', price: 0, originalPrice: 0, badge: '', emoji: '📘', isActive: true, featured: false, seoTitle: '', seoDescription: '', seoKeywords: '' });
 
   useEffect(() => {
     productAPI.adminGetAll()
@@ -30,6 +30,9 @@ export default function AdminProducts() {
       emoji: editingProduct.emoji || '📘',
       isActive: editingProduct.isActive ?? true,
       featured: editingProduct.featured ?? false,
+      seoTitle: editingProduct.seo?.metaTitle || '',
+      seoDescription: editingProduct.seo?.metaDescription || '',
+      seoKeywords: editingProduct.seo?.keywords?.join(', ') || '',
     });
   }, [editingProduct]);
 
@@ -56,7 +59,23 @@ export default function AdminProducts() {
     if (!editingProduct) return;
     setIsSaving(true);
     try {
-      const res = await productAPI.update(editingProduct._id, form);
+      const payload = {
+        title: form.title,
+        description: form.description,
+        category: form.category,
+        price: form.price,
+        originalPrice: form.originalPrice,
+        badge: form.badge,
+        emoji: form.emoji,
+        isActive: form.isActive,
+        featured: form.featured,
+        seo: {
+          metaTitle: form.seoTitle || undefined,
+          metaDescription: form.seoDescription || undefined,
+          keywords: form.seoKeywords ? form.seoKeywords.split(',').map(k => k.trim()).filter(Boolean) : [],
+        },
+      };
+      const res = await productAPI.update(editingProduct._id, payload);
       setProducts(prev => prev.map(p => p._id === editingProduct._id ? res.data.product : p));
       toast.success('Product updated');
       setEditingProduct(null);
@@ -184,6 +203,27 @@ export default function AdminProducts() {
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
                   <input type="checkbox" checked={form.isActive} onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))} /> Active
                 </label>
+              </div>
+
+              {/* SEO */}
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, marginTop: 4 }}>
+                <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>SEO (optional — overrides defaults)</p>
+                <div style={{ display: 'grid', gap: 10 }}>
+                  <div>
+                    <label className="label">Meta Title <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(50–60 chars ideal)</span></label>
+                    <input className="input" value={form.seoTitle} onChange={e => setForm(f => ({ ...f, seoTitle: e.target.value }))} placeholder={`${form.title} – Nursing Study Material`} maxLength={70} />
+                    <p style={{ fontSize: 11, color: form.seoTitle.length > 60 ? '#DC2626' : 'var(--muted)', marginTop: 3 }}>{form.seoTitle.length}/60</p>
+                  </div>
+                  <div>
+                    <label className="label">Meta Description <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(120–155 chars ideal)</span></label>
+                    <textarea className="input" value={form.seoDescription} onChange={e => setForm(f => ({ ...f, seoDescription: e.target.value }))} rows={2} placeholder={form.description?.slice(0, 155)} maxLength={160} style={{ resize: 'vertical' }} />
+                    <p style={{ fontSize: 11, color: form.seoDescription.length > 155 ? '#DC2626' : 'var(--muted)', marginTop: 3 }}>{form.seoDescription.length}/155</p>
+                  </div>
+                  <div>
+                    <label className="label">Keywords <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(comma-separated)</span></label>
+                    <input className="input" value={form.seoKeywords} onChange={e => setForm(f => ({ ...f, seoKeywords: e.target.value }))} placeholder="NCLEX prep, nursing pharmacology, study guide" />
+                  </div>
+                </div>
               </div>
               <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
                 <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSave} disabled={isSaving}>

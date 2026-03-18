@@ -47,7 +47,7 @@ function DropZone({ label, accept, icon, file, onFile }) {
 }
 
 export default function AdminUpload() {
-  const [form, setForm] = useState({ title: '', category: 'Study Guides', price: '', originalPrice: '', pages: '', description: '', badge: '', emoji: '📘' });
+  const [form, setForm] = useState({ title: '', category: 'Study Guides', price: '', originalPrice: '', pages: '', description: '', badge: '', emoji: '📘', seoTitle: '', seoDescription: '', seoKeywords: '' });
   const [pdfFile, setPdfFile] = useState(null);
   const [coverFile, setCoverFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -67,7 +67,7 @@ export default function AdminUpload() {
       await uploadAPI.uploadProductFull(fd);
       setProgress(100);
       toast.success('Product uploaded successfully!');
-      setForm({ title: '', category: 'Study Guides', price: '', originalPrice: '', pages: '', description: '', badge: '', emoji: '📘' });
+      setForm({ title: '', category: 'Study Guides', price: '', originalPrice: '', pages: '', description: '', badge: '', emoji: '📘', seoTitle: '', seoDescription: '', seoKeywords: '' });
       setPdfFile(null); setCoverFile(null); setProgress(0);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Upload failed.');
@@ -124,6 +124,26 @@ export default function AdminUpload() {
           <div style={{ marginBottom: 14 }}>
             <label className="label">Description</label>
             <textarea className="input" value={form.description} onChange={set('description')} rows={3} placeholder="Describe the content…" style={{ resize: 'vertical' }} />
+          </div>
+
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, marginTop: 4 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>SEO <span style={{ fontWeight: 400, textTransform: 'none' }}>(optional — leave blank to auto-generate)</span></p>
+            <div style={{ display: 'grid', gap: 10 }}>
+              <div>
+                <label className="label">Meta Title <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(50–60 chars ideal)</span></label>
+                <input className="input" value={form.seoTitle} onChange={set('seoTitle')} placeholder={form.title ? `${form.title} – Nursing Study Material` : 'e.g. NCLEX-RN Master Guide – Nursing Study Material'} maxLength={70} />
+                <p style={{ fontSize: 11, color: form.seoTitle.length > 60 ? '#DC2626' : 'var(--muted)', marginTop: 3 }}>{form.seoTitle.length}/60</p>
+              </div>
+              <div>
+                <label className="label">Meta Description <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(120–155 chars ideal)</span></label>
+                <textarea className="input" value={form.seoDescription} onChange={set('seoDescription')} rows={2} placeholder="Comprehensive NCLEX-RN study guide covering…" maxLength={160} style={{ resize: 'vertical' }} />
+                <p style={{ fontSize: 11, color: form.seoDescription.length > 155 ? '#DC2626' : 'var(--muted)', marginTop: 3 }}>{form.seoDescription.length}/155</p>
+              </div>
+              <div>
+                <label className="label">Keywords <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(comma-separated)</span></label>
+                <input className="input" value={form.seoKeywords} onChange={set('seoKeywords')} placeholder="NCLEX prep, nursing pharmacology, study guide" />
+              </div>
+            </div>
           </div>
 
           <div>

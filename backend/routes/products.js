@@ -5,6 +5,14 @@ const { protect, restrictTo, optionalAuth } = require('../middleware/auth');
 const asyncHandler = require('../utils/asyncHandler');
 const { createNotification } = require('../utils/notifications');
 
+const buildSeo = ({ title, description, category, seoTitle, seoDescription, seoKeywords }) => ({
+  metaTitle: seoTitle || `${title} – ${category} | AceNursing`,
+  metaDescription: seoDescription || (description ? description.slice(0, 155) : `Download ${title} — premium nursing study material from AceNursing.`),
+  keywords: seoKeywords
+    ? seoKeywords.split(',').map(k => k.trim()).filter(Boolean)
+    : [title, category, 'nursing study material', 'NCLEX prep', 'AceNursing'].filter(Boolean),
+});
+
 // ─── GET /api/products/admin/all ──────────────────────────────────────────────
 router.get('/admin/all', protect, restrictTo('admin'), asyncHandler(async (req, res) => {
   const products = await Product.find()
@@ -86,6 +94,20 @@ router.patch('/:id', protect, restrictTo('admin'), asyncHandler(async (req, res)
     Object.entries(req.body).filter(([k]) => !forbidden.has(k))
   );
   if ('badge' in safeBody && safeBody.badge === '') safeBody.badge = null;
+  // Auto-generate SEO if title/description changed but no seo provided
+  if ((safeBody.title || safeBody.description) && !safeBody.seo) {
+    const existing = await Product.findById(req.params.id).select('title description category seo');
+    if (existing) {
+      safeBody.seo = buildSeo({
+        title: safeBody.title || existing.title,
+        description: safeBody.description || existing.description,
+        category: safeBody.category || existing.category,
+        seoTitle: existing.seo?.metaTitle,
+        seoDescription: existing.seo?.metaDescription,
+        seoKeywords: existing.seo?.keywords?.join(', '),
+      });
+    }
+  }
 
   const product = await Product.findByIdAndUpdate(req.params.id, safeBody, { new: true });
   if (!product) return res.status(404).json({ error: 'Product not found.' });

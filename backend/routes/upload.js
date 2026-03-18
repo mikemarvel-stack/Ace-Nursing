@@ -5,6 +5,25 @@ const { protect, restrictTo } = require('../middleware/auth');
 const { uploadToS3, deleteFromS3 } = require('../utils/s3');
 const Product = require('../models/Product');
 const asyncHandler = require('../utils/asyncHandler');
+const axios = require('axios');
+
+const SITE_URL = process.env.FRONTEND_URL || 'https://acenursing.com';
+
+// Ping Google to re-crawl a URL after publishing
+const pingGoogle = (slug) => {
+  const url = `${SITE_URL}/product/${slug}`;
+  axios.get(`https://www.google.com/ping?sitemap=${encodeURIComponent(`${process.env.BACKEND_URL || 'https://ace-nursing.onrender.com'}/sitemap.xml`)}`, { timeout: 5000 })
+    .catch(() => {});
+};
+
+// Auto-generate SEO fields if not provided
+const buildSeo = ({ title, description, category, seoTitle, seoDescription, seoKeywords }) => ({
+  metaTitle: seoTitle || `${title} – ${category} | AceNursing`,
+  metaDescription: seoDescription || (description ? description.slice(0, 155) : `Download ${title} — premium nursing study material from AceNursing. Instant PDF access.`),
+  keywords: seoKeywords
+    ? seoKeywords.split(',').map(k => k.trim()).filter(Boolean)
+    : [title, category, 'nursing study material', 'NCLEX prep', 'AceNursing'].filter(Boolean),
+});
 
 const storage = multer.memoryStorage();
 
@@ -99,7 +118,7 @@ router.post('/product-full', protect, restrictTo('admin'),
     { name: 'cover', maxCount: 1 },
   ]),
   asyncHandler(async (req, res) => {
-    const { title, category, price, originalPrice, pages, description, badge, emoji } = req.body;
+    const { title, category, price, originalPrice, pages, description, badge, emoji, seoTitle, seoDescription, seoKeywords } = req.body;
     if (!title || !price) return res.status(400).json({ error: 'Title and price are required.' });
 
     const productData = {
@@ -111,6 +130,7 @@ router.post('/product-full', protect, restrictTo('admin'),
       badge: badge || null,
       emoji: emoji || '📘',
       uploadedBy: req.user._id,
+      seo: buildSeo({ title, description, category, seoTitle, seoDescription, seoKeywords }),
     };
 
     if (req.files?.pdf?.[0]) {
@@ -136,6 +156,7 @@ router.post('/product-full', protect, restrictTo('admin'),
     }
 
     const product = await Product.create(productData);
+    pingGoogle(product.slug);
     res.status(201).json({ message: 'Product created successfully.', product });
   })
 );
