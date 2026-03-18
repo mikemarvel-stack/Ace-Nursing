@@ -147,17 +147,6 @@ router.post('/:id/revision', protect, asyncHandler(async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 router.use(protect, restrictTo('admin'));
 
-// ── GET /api/custom-orders — list all ────────────────────────────────────────
-router.get('/', asyncHandler(async (req, res) => {
-  const { status, page = 1, limit = 20 } = req.query;
-  const filter = status ? { status } : {};
-  const [orders, total] = await Promise.all([
-    CustomOrder.find(filter).sort('-createdAt').skip((page - 1) * limit).limit(Number(limit)),
-    CustomOrder.countDocuments(filter),
-  ]);
-  res.json({ orders, total, page: Number(page), pages: Math.ceil(total / limit) });
-}));
-
 // ── GET /api/custom-orders/stats ─────────────────────────────────────────────
 router.get('/stats', asyncHandler(async (req, res) => {
   const [total, pending, active, delivered] = await Promise.all([
@@ -167,6 +156,17 @@ router.get('/stats', asyncHandler(async (req, res) => {
     CustomOrder.countDocuments({ status: { $in: ['delivered', 'completed'] } }),
   ]);
   res.json({ total, pending, active, delivered });
+}));
+
+// ── GET /api/custom-orders — list all ────────────────────────────────────────
+router.get('/', asyncHandler(async (req, res) => {
+  const { status, page = 1, limit = 20 } = req.query;
+  const filter = status ? { status } : {};
+  const [orders, total] = await Promise.all([
+    CustomOrder.find(filter).sort('-createdAt').skip((page - 1) * limit).limit(Number(limit)),
+    CustomOrder.countDocuments(filter),
+  ]);
+  res.json({ orders, total, page: Number(page), pages: Math.ceil(total / limit) });
 }));
 
 // ── GET /api/custom-orders/:id ────────────────────────────────────────────────
