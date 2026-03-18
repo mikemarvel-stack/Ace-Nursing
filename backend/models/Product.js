@@ -26,7 +26,20 @@ const productSchema = new mongoose.Schema(
     category: {
       type: String,
       required: [true, 'Category is required'],
-      enum: ['Study Guides', 'Flashcards', 'Reference Cards', 'Checklists', 'Bundles'],
+      enum: [
+        // Program levels
+        'RN Prep (NCLEX-RN)', 'LPN/LVN Prep (NCLEX-PN)', 'BSN Courses', 'MSN Courses',
+        'DNP / Advanced Practice', 'Continuing Education (CEU)',
+        // Core courses
+        'Fundamentals of Nursing', 'Pharmacology', 'Med-Surg & Pathophysiology',
+        'Maternal-Newborn & Pediatrics', 'Mental Health Nursing', 'Community & Public Health',
+        'Critical Care & ICU', 'Leadership & Management',
+        // Specialty
+        'Anatomy & Physiology', 'Nutrition & Diet Therapy', 'Health Assessment',
+        'Nursing Research & EBP', 'NCLEX Strategy & Test Prep',
+        // Legacy (kept for backward compat with existing DB docs)
+        'Study Guides', 'Flashcards', 'Reference Cards', 'Checklists', 'Bundles',
+      ],
     },
     price: {
       type: Number,

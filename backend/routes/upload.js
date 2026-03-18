@@ -161,6 +161,48 @@ router.post('/product-full', protect, restrictTo('admin'),
   })
 );
 
+// ─── POST /api/upload/custom-order-file ─────────────────────────────────────
+const uploadAny = multer({
+  storage,
+  limits: { fileSize: 100 * 1024 * 1024 },
+});
+
+router.post('/custom-order-file', protect, restrictTo('admin'), uploadAny.single('file'),
+  asyncHandler(async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No file provided.' });
+    const { customOrderId } = req.body;
+
+    const result = await uploadToS3({
+      buffer: req.file.buffer,
+      originalName: req.file.originalname,
+      mimeType: req.file.mimetype,
+      folder: 'custom-orders',
+    });
+
+    // Optionally attach the key to the custom order
+    if (customOrderId) {
+      const CustomOrder = require('../models/CustomOrder');
+      await CustomOrder.findByIdAndUpdate(customOrderId, {
+        $set: {
+          'delivery.fileKey': result.key,
+          'delivery.originalName': result.originalName,
+        },
+      });
+    }
+
+    // Return a 7-day signed URL for immediate use
+    const { getSignedDownloadUrl } = require('../utils/s3');
+    const signedUrl = await getSignedDownloadUrl(result.key, 7 * 24 * 60 * 60);
+
+    res.json({
+      key: result.key,
+      originalName: result.originalName,
+      size: result.size,
+      signedUrl,
+    });
+  })
+);
+
 // ─── DELETE /api/upload/file ──────────────────────────────────────────────────
 router.delete('/file', protect, restrictTo('admin'), asyncHandler(async (req, res) => {
   const { key } = req.body;

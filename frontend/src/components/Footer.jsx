@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
-
-const CATS = ['Study Guides', 'Flashcards', 'Reference Cards', 'Checklists', 'Bundles'];
+import { CATEGORY_GROUPS, slugifyCategory } from '../categories';
 
 const SUPPORT_LINKS = [
   { label: 'Contact Us', to: '/contact' },
@@ -31,7 +30,7 @@ export default function Footer() {
   return (
     <footer style={{ background: '#071020', color: 'rgba(255,255,255,0.55)', padding: '56px 0 0' }}>
       <div className="container">
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 48, marginBottom: 48 }} className="footer-grid">
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', gap: 36, marginBottom: 48 }} className="footer-grid">
           {/* Brand */}
           <div>
             <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
@@ -55,11 +54,23 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Categories */}
+          {/* Shop by level */}
           <div>
-            <h4 style={{ color: '#fff', fontWeight: 600, fontSize: 15, marginBottom: 16 }}>Shop</h4>
-            {CATS.map((cat) => (
-              <Link key={cat} to={`/shop/${cat.toLowerCase().replace(/\s+/g, '-')}`} style={linkStyle}
+            <h4 style={{ color: '#fff', fontWeight: 600, fontSize: 15, marginBottom: 16 }}>By Level</h4>
+            {CATEGORY_GROUPS[0].items.map((cat) => (
+              <Link key={cat} to={`/shop/${slugifyCategory(cat)}`} style={linkStyle}
+                onMouseOver={e => e.currentTarget.style.color = '#C49A3C'}
+                onMouseOut={e => e.currentTarget.style.color = 'rgba(255,255,255,0.55)'}>
+                {cat}
+              </Link>
+            ))}
+          </div>
+
+          {/* Shop by course */}
+          <div>
+            <h4 style={{ color: '#fff', fontWeight: 600, fontSize: 15, marginBottom: 16 }}>By Course</h4>
+            {CATEGORY_GROUPS[1].items.slice(0, 6).map((cat) => (
+              <Link key={cat} to={`/shop/${slugifyCategory(cat)}`} style={linkStyle}
                 onMouseOver={e => e.currentTarget.style.color = '#C49A3C'}
                 onMouseOut={e => e.currentTarget.style.color = 'rgba(255,255,255,0.55)'}>
                 {cat}

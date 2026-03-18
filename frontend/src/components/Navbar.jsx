@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore, useCartStore } from '../store';
 import { notificationsAPI } from '../api';
 import toast from 'react-hot-toast';
+import { CATEGORY_GROUPS, slugifyCategory } from '../categories';
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -60,11 +61,9 @@ export default function Navbar() {
 
   const MATERIALS = [
     { label: 'All Materials', path: '/shop' },
-    { label: 'Study Guides', path: '/shop/study-guides' },
-    { label: 'Flashcards', path: '/shop/flashcards' },
-    { label: 'Reference Cards', path: '/shop/reference-cards' },
-    { label: 'Checklists', path: '/shop/checklists' },
-    { label: 'Bundles', path: '/shop/bundles' },
+    ...CATEGORY_GROUPS[0].items.map(c => ({ label: c, path: `/shop/${slugifyCategory(c)}` })),
+    { label: '── Courses ──', path: null },
+    ...CATEGORY_GROUPS[1].items.map(c => ({ label: c, path: `/shop/${slugifyCategory(c)}` })),
   ];
 
   useEffect(() => {
@@ -160,17 +159,20 @@ export default function Navbar() {
             {materialsOpen && (
               <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, background: '#0C1B33', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, padding: 8, boxShadow: '0 10px 30px rgba(0,0,0,0.25)', minWidth: 200, zIndex: 40 }}>
                 {MATERIALS.map((item) => (
+                  item.path === null ? (
+                    <div key={item.label} style={{ padding: '6px 12px 2px', fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1 }}>{item.label}</div>
+                  ) : (
                   <button
                     key={item.path}
                     onClick={() => { navigate(item.path); setMaterialsOpen(false); }}
                     style={{
                       width: '100%',
                       textAlign: 'left',
-                      padding: '10px 12px',
+                      padding: '9px 12px',
                       background: location.pathname === item.path ? 'rgba(255,255,255,0.14)' : 'transparent',
                       border: 'none',
                       color: 'rgba(255,255,255,0.9)',
-                      fontSize: 14,
+                      fontSize: 13,
                       cursor: 'pointer',
                       borderRadius: 10,
                       transition: 'background 0.15s',
@@ -180,6 +182,7 @@ export default function Navbar() {
                   >
                     {item.label}
                   </button>
+                  )
                 ))}
               </div>
             )}
@@ -315,11 +318,8 @@ export default function Navbar() {
               { label: 'Home', path: '/' },
               { label: 'All Materials', path: '/shop' },
               { label: 'Custom Orders', path: '/custom-order' },
-              { label: 'Study Guides', path: '/shop/study-guides' },
-              { label: 'Flashcards', path: '/shop/flashcards' },
-              { label: 'Reference Cards', path: '/shop/reference-cards' },
-              { label: 'Checklists', path: '/shop/checklists' },
-              { label: 'Bundles', path: '/shop/bundles' },
+              ...CATEGORY_GROUPS[0].items.map(c => ({ label: c, path: `/shop/${slugifyCategory(c)}` })),
+              ...CATEGORY_GROUPS[1].items.map(c => ({ label: c, path: `/shop/${slugifyCategory(c)}` })),
               ...(isAdmin() ? [{ label: '⚙️ Admin Panel', path: '/admin' }] : []),
             ].map(item => (
               <Link key={item.path} to={item.path}

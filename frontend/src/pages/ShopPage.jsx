@@ -3,21 +3,12 @@ import { useSearchParams, useParams, useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { productAPI } from '../api';
 import useSEO from '../hooks/useSEO';
+import { CATEGORIES, CATEGORY_GROUPS, slugifyCategory, categoryFromSlug } from '../categories';
 
 const SITE_URL = 'https://acenursing.com';
 
-const CATS = ['All', 'Study Guides', 'Flashcards', 'Reference Cards', 'Checklists', 'Bundles'];
+const CATS = ['All', ...CATEGORIES];
 
-const CATEGORY_SLUGS = {
-  'study-guides': 'Study Guides',
-  'flashcards': 'Flashcards',
-  'reference-cards': 'Reference Cards',
-  'checklists': 'Checklists',
-  'bundles': 'Bundles',
-};
-
-const slugifyCategory = (category) => category.toLowerCase().replace(/\s+/g, '-');
-const categoryFromSlug = (slug) => CATEGORY_SLUGS[slug] || 'All';
 const slugFromCategory = (category) => {
   if (!category || category === 'All') return '';
   return slugifyCategory(category);
@@ -44,14 +35,14 @@ export default function ShopPage() {
 
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [cat, setCat] = useState(
-    routeCategory ? categoryFromSlug(routeCategory) : categoryQuery || 'All'
+    routeCategory ? (categoryFromSlug(routeCategory) || 'All') : categoryQuery || 'All'
   );
   const [sort, setSort] = useState(searchParams.get('sort') || 'featured');
   const [page, setPage] = useState(1);
 
   // Sync category from URL
   useEffect(() => {
-    const next = routeCategory ? categoryFromSlug(routeCategory) : categoryQuery || 'All';
+    const next = routeCategory ? (categoryFromSlug(routeCategory) || 'All') : categoryQuery || 'All';
     setCat(next);
     setPage(1);
   }, [routeCategory, categoryQuery]);
@@ -68,7 +59,7 @@ export default function ShopPage() {
     document.title = cat === 'All' ? 'Shop – Ace Nursing' : `${cat} – Shop | Ace Nursing`;
   }, [cat]);
 
-  const catSlug = cat !== 'All' ? cat.toLowerCase().replace(/\s+/g, '-') : '';
+  const catSlug = cat !== 'All' ? slugifyCategory(cat) : '';
   useSEO({
     title: cat === 'All' ? 'Nursing Study Materials Shop' : `${cat} – Nursing Study Materials`,
     description: cat === 'All'
@@ -134,8 +125,13 @@ export default function ShopPage() {
           </div>
 
           {/* Category */}
-          <select value={cat} onChange={e => handleCat(e.target.value)} className="input" style={{ width: 'auto', minWidth: 160 }}>
-            {CATS.map(c => <option key={c}>{c}</option>)}
+          <select value={cat} onChange={e => handleCat(e.target.value)} className="input" style={{ width: 'auto', minWidth: 200 }}>
+            <option value="All">All Categories</option>
+            {CATEGORY_GROUPS.map(group => (
+              <optgroup key={group.label} label={group.label}>
+                {group.items.map(c => <option key={c} value={c}>{c}</option>)}
+              </optgroup>
+            ))}
           </select>
 
           {/* Sort */}
@@ -144,13 +140,26 @@ export default function ShopPage() {
           </select>
         </div>
 
-        {/* Category pills */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 28, flexWrap: 'wrap' }}>
-          {CATS.map(c => (
-            <button key={c} onClick={() => handleCat(c)}
-              style={{ padding: '6px 16px', borderRadius: 50, fontSize: 13, fontWeight: cat === c ? 700 : 400, background: cat === c ? 'var(--navy)' : '#fff', color: cat === c ? '#fff' : 'var(--muted)', border: `1.5px solid ${cat === c ? 'var(--navy)' : 'var(--border)'}`, cursor: 'pointer', transition: 'all 0.2s' }}>
-              {c}
+        {/* Category pills — grouped */}
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+            <button onClick={() => handleCat('All')}
+              style={{ padding: '6px 16px', borderRadius: 50, fontSize: 13, fontWeight: cat === 'All' ? 700 : 400, background: cat === 'All' ? 'var(--navy)' : '#fff', color: cat === 'All' ? '#fff' : 'var(--muted)', border: `1.5px solid ${cat === 'All' ? 'var(--navy)' : 'var(--border)'}`, cursor: 'pointer' }}>
+              All
             </button>
+          </div>
+          {CATEGORY_GROUPS.map(group => (
+            <div key={group.label} style={{ marginBottom: 10 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>{group.label}</p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {group.items.map(c => (
+                  <button key={c} onClick={() => handleCat(c)}
+                    style={{ padding: '6px 16px', borderRadius: 50, fontSize: 13, fontWeight: cat === c ? 700 : 400, background: cat === c ? 'var(--navy)' : '#fff', color: cat === c ? '#fff' : 'var(--muted)', border: `1.5px solid ${cat === c ? 'var(--navy)' : 'var(--border)'}`, cursor: 'pointer', transition: 'all 0.2s' }}>
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
 

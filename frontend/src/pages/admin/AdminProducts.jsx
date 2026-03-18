@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { productAPI } from '../../api';
+import { CATEGORY_GROUPS } from '../../categories';
 
 export default function AdminProducts() {
   const [products, setProducts] = useState([]);
@@ -9,7 +10,7 @@ export default function AdminProducts() {
   const [deletingId, setDeletingId] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [form, setForm] = useState({ title: '', description: '', category: 'Study Guides', price: 0, originalPrice: 0, badge: '', emoji: '📘', isActive: true, featured: false, seoTitle: '', seoDescription: '', seoKeywords: '' });
+  const [form, setForm] = useState({ title: '', description: '', category: 'RN Prep (NCLEX-RN)', price: 0, originalPrice: 0, badge: '', emoji: '📘', isActive: true, featured: false, seoTitle: '', seoDescription: '', seoKeywords: '' });
 
   useEffect(() => {
     productAPI.adminGetAll()
@@ -23,7 +24,7 @@ export default function AdminProducts() {
     setForm({
       title: editingProduct.title || '',
       description: editingProduct.description || '',
-      category: editingProduct.category || 'Study Guides',
+      category: editingProduct.category || 'RN Prep (NCLEX-RN)',
       price: editingProduct.price || 0,
       originalPrice: editingProduct.originalPrice || 0,
       badge: editingProduct.badge || '',
@@ -171,7 +172,11 @@ export default function AdminProducts() {
               <div>
                 <label className="label">Category</label>
                 <select className="input" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                  {['Study Guides','Flashcards','Reference Cards','Checklists','Bundles'].map(c => <option key={c}>{c}</option>)}
+                  {CATEGORY_GROUPS.map(group => (
+                    <optgroup key={group.label} label={group.label}>
+                      {group.items.map(c => <option key={c} value={c}>{c}</option>)}
+                    </optgroup>
+                  ))}
                 </select>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>

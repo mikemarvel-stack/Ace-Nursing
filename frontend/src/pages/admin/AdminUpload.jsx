@@ -1,8 +1,7 @@
 import { useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { uploadAPI } from '../../api';
-
-const CATS = ['Study Guides', 'Flashcards', 'Reference Cards', 'Checklists', 'Bundles'];
+import { CATEGORIES, CATEGORY_GROUPS } from '../../categories';
 const EMOJIS = ['📘', '💊', '🗂️', '✅', '📦', '🫀', '🧠', '🔢', '🧪', '⚡', '🏥', '👶'];
 const BADGES = ['', 'Best Seller', 'Popular', 'New', 'Top Rated', 'Best Value', 'Fan Fave', 'Advanced', 'Must Have'];
 
@@ -47,7 +46,7 @@ function DropZone({ label, accept, icon, file, onFile }) {
 }
 
 export default function AdminUpload() {
-  const [form, setForm] = useState({ title: '', category: 'Study Guides', price: '', originalPrice: '', pages: '', description: '', badge: '', emoji: '📘', seoTitle: '', seoDescription: '', seoKeywords: '' });
+  const [form, setForm] = useState({ title: '', category: 'RN Prep (NCLEX-RN)', price: '', originalPrice: '', pages: '', description: '', badge: '', emoji: '📘', seoTitle: '', seoDescription: '', seoKeywords: '' });
   const [pdfFile, setPdfFile] = useState(null);
   const [coverFile, setCoverFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -67,7 +66,7 @@ export default function AdminUpload() {
       await uploadAPI.uploadProductFull(fd);
       setProgress(100);
       toast.success('Product uploaded successfully!');
-      setForm({ title: '', category: 'Study Guides', price: '', originalPrice: '', pages: '', description: '', badge: '', emoji: '📘', seoTitle: '', seoDescription: '', seoKeywords: '' });
+      setForm({ title: '', category: 'RN Prep (NCLEX-RN)', price: '', originalPrice: '', pages: '', description: '', badge: '', emoji: '📘', seoTitle: '', seoDescription: '', seoKeywords: '' });
       setPdfFile(null); setCoverFile(null); setProgress(0);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Upload failed.');
@@ -95,7 +94,11 @@ export default function AdminUpload() {
             <div>
               <label className="label">Category</label>
               <select className="input" value={form.category} onChange={set('category')}>
-                {CATS.map(c => <option key={c}>{c}</option>)}
+                {CATEGORY_GROUPS.map(group => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.items.map(c => <option key={c} value={c}>{c}</option>)}
+                  </optgroup>
+                ))}
               </select>
             </div>
             <div>
