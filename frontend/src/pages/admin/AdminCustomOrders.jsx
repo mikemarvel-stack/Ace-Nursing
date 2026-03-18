@@ -45,28 +45,47 @@ export default function AdminCustomOrders() {
   const [deliveryForm, setDeliveryForm] = useState({ downloadUrl: '', notes: '' });
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
-    try {
-      const [ordersRes, statsRes] = await Promise.all([
-        customOrdersAPI.getAll({ status: filter === 'all' ? undefined : filter, limit: 50 }),
-        customOrdersAPI.getStats(),
-      ]);
-      setOrders(ordersRes.data.orders);
-      setStats(statsRes.data);
-    } catch { toast.error('Failed to load orders'); }
-    finally { setLoading(false); }
-  };
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    Promise.all([
+      customOrdersAPI.getAll({ status: filter === 'all' ? undefined : filter, limit: 50 }),
+      customOrdersAPI.getStats(),
+    ])
+      .then(([ordersRes, statsRes]) => {
+        if (cancelled) return;
+        setOrders(ordersRes.data.orders);
+        setStats(statsRes.data);
+      })
+      .catch(() => toast.error('Failed to load orders'))
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [filter]);
 
-  useEffect(() => { load(); }, [filter]);
+  const load = () => {
+    setLoading(true);
+    Promise.all([
+      customOrdersAPI.getAll({ status: filter === 'all' ? undefined : filter, limit: 50 }),
+      customOrdersAPI.getStats(),
+    ])
+      .then(([ordersRes, statsRes]) => {
+        setOrders(ordersRes.data.orders);
+        setStats(statsRes.data);
+      })
+      .catch(() => toast.error('Failed to load orders'))
+      .finally(() => setLoading(false));
+  };
 
   const handleSendQuote = async () => {
     if (!quoteForm.price || !quoteForm.daysToComplete) { toast.error('Price and delivery days are required.'); return; }
     setSaving(true);
     try {
-      await customOrdersAPI.sendQuote(selected._id, quoteForm);
+      const res = await customOrdersAPI.sendQuote(selected._id, quoteForm);
       toast.success('Quote sent to customer!');
-      setSelected(null);
+      setSelected(res.data.order);
       setQuoteForm({ price: '', daysToComplete: '', adminNotes: '' });
+      setOrders(prev => prev.map(o => o._id === res.data.order._id ? res.data.order : o));
+      setStats(s => ({ ...s })); // trigger stats refresh
       load();
     } catch (err) { toast.error(err.response?.data?.error || 'Failed to send quote.'); }
     finally { setSaving(false); }
@@ -74,10 +93,10 @@ export default function AdminCustomOrders() {
 
   const handleStatusUpdate = async (id, status) => {
     try {
-      await customOrdersAPI.update(id, { status });
+      const res = await customOrdersAPI.update(id, { status });
       toast.success('Status updated');
-      load();
-      if (selected?._id === id) setSelected(prev => ({ ...prev, status }));
+      setOrders(prev => prev.map(o => o._id === id ? { ...o, status } : o));
+      if (selected?._id === id) setSelected(res.data.order);
     } catch { toast.error('Failed to update status'); }
   };
 
@@ -87,7 +106,8 @@ export default function AdminCustomOrders() {
     try {
       await customOrdersAPI.update(selected._id, {
         status: 'delivered',
-        delivery: { downloadUrl: deliveryForm.downloadUrl, notes: deliveryForm.notes },
+        deliveryDownloadUrl: deliveryForm.downloadUrl,
+        deliveryNotes: deliveryForm.notes,
       });
       toast.success('Assignment marked as delivered! Customer notified.');
       setSelected(null);

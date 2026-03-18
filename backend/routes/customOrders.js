@@ -207,28 +207,33 @@ router.post('/:id/quote', asyncHandler(async (req, res) => {
 
 // ── PATCH /api/custom-orders/:id — update status / notes / delivery ───────────
 router.patch('/:id', asyncHandler(async (req, res) => {
-  const allowed = ['status', 'adminNotes', 'delivery'];
-  const update = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
+  const { status, adminNotes, deliveryDownloadUrl, deliveryNotes } = req.body;
+  const update = {};
+  if (status !== undefined)     update.status = status;
+  if (adminNotes !== undefined) update.adminNotes = adminNotes;
 
-  // When marking delivered, set deliveredAt
-  if (update.status === 'delivered') {
+  if (status === 'delivered') {
     update['delivery.deliveredAt'] = new Date();
-    const order = await CustomOrder.findById(req.params.id);
-    if (order) {
-      sendCustomOrderDelivered({ order, downloadUrl: req.body.delivery?.downloadUrl }).catch(console.error);
-      if (order.user) {
+    if (deliveryDownloadUrl) update['delivery.downloadUrl'] = deliveryDownloadUrl;
+    if (deliveryNotes)       update['delivery.notes'] = deliveryNotes;
+
+    const existing = await CustomOrder.findById(req.params.id);
+    if (existing) {
+      sendCustomOrderDelivered({ order: existing, downloadUrl: deliveryDownloadUrl }).catch(console.error);
+      if (existing.user) {
         createNotification({
           type: 'custom_order',
-          title: `Assignment Delivered 🎉 — #${order.orderNumber}`,
-          message: `Your assignment "${order.subject}" has been delivered. Please review and confirm completion.`,
+          title: `Assignment Delivered 🎉 — #${existing.orderNumber}`,
+          message: `Your assignment "${existing.subject}" has been delivered. Please review and confirm completion.`,
           link: '/account',
-          meta: { orderId: order._id },
-          userId: order.user,
+          meta: { orderId: existing._id },
+          userId: existing.user,
         });
       }
     }
   }
 
+  if (!Object.keys(update).length) return res.status(400).json({ error: 'Nothing to update.' });
   const order = await CustomOrder.findByIdAndUpdate(req.params.id, { $set: update }, { new: true });
   if (!order) return res.status(404).json({ error: 'Order not found.' });
   res.json({ order });

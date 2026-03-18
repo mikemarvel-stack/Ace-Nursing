@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store';
@@ -24,10 +24,10 @@ const STATUS_META = {
 
 function Countdown({ dueAt }) {
   const [now, setNow] = useState(Date.now());
-  useState(() => {
+  useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  });
+  }, []);
   const ms = Math.max(0, new Date(dueAt) - now);
   const d = Math.floor(ms / 86400000);
   const h = Math.floor((ms % 86400000) / 3600000);
@@ -379,7 +379,7 @@ export default function CustomOrderPage() {
                     <textarea className="input" rows={2} value={form.attachmentNotes} onChange={set('attachmentNotes')}
                       placeholder="Describe any files you'll send via email (e.g. rubric PDF, lecture notes, case study document)…"
                       style={{ resize: 'vertical' }} />
-                    <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>Send files to <strong>orders@acenursing.com</strong> with your request number after submitting.</p>
+                    <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>Send files to <strong>supportacenursing@gmail.com</strong> with your request number after submitting.</p>
                   </div>
                 </div>
               </div>
