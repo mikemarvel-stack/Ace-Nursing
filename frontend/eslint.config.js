@@ -13,6 +13,6 @@ export default [
       'no-var': 'error',
       'eqeqeq': 'error',
     },
-    languageOptions: { ecmaVersion: 2022, globals: { window: true, document: true, fetch: true, console: true, import: true } },
+    languageOptions: { ecmaVersion: 2022, globals: { window: true, document: true, fetch: true, console: true, URL: true, import: true } },
   },
 ];
