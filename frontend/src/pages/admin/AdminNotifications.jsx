@@ -8,6 +8,7 @@ const TYPE_META = {
   new_user:        { icon: '👤', color: '#065F46', bg: '#D1FAE5' },
   contact_message: { icon: '✉️', color: '#92400E', bg: '#FEF3C7' },
   order_status:    { icon: '🔄', color: '#5B21B6', bg: '#EDE9FE' },
+  new_review:      { icon: '⭐', color: '#92400E', bg: '#FFF7ED' },
   system:          { icon: '⚙️', color: '#374151', bg: '#F3F4F6' },
 };
 
@@ -44,6 +45,29 @@ function ContactMessageExpanded({ meta }) {
       >
         ↩ Reply via Email
       </a>
+    </div>
+  );
+}
+
+function ReviewExpanded({ meta }) {
+  if (!meta) return null;
+  return (
+    <div style={{ marginTop: 12, background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 10, padding: '14px 16px' }}>
+      <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 8 }}>
+        <div>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Product</span>
+          <p style={{ fontSize: 13, color: 'var(--navy)', fontWeight: 600, marginTop: 1 }}>{meta.productTitle}</p>
+        </div>
+        <div>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Rating</span>
+          <p style={{ fontSize: 13, color: '#92400E', fontWeight: 700, marginTop: 1 }}>{'★'.repeat(meta.rating)}{'☆'.repeat(5 - meta.rating)}</p>
+        </div>
+      </div>
+      {meta.comment && (
+        <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.65, whiteSpace: 'pre-wrap', borderTop: '1px solid #FED7AA', paddingTop: 10 }}>
+          {meta.comment}
+        </div>
+      )}
     </div>
   );
 }
@@ -125,6 +149,7 @@ export default function AdminNotifications() {
           { key: 'new_order', label: '🧾 Orders' },
           { key: 'new_user', label: '👤 Signups' },
           { key: 'contact_message', label: '✉️ Messages' },
+          { key: 'new_review', label: '⭐ Reviews' },
         ].map(({ key, label }) => (
           <button key={key} onClick={() => setFilter(key)}
             style={{ padding: '6px 16px', borderRadius: 50, fontSize: 13, fontWeight: filter === key ? 700 : 400, background: filter === key ? 'var(--navy)' : '#fff', color: filter === key ? '#fff' : 'var(--muted)', border: `1.5px solid ${filter === key ? 'var(--navy)' : 'var(--border)'}`, cursor: 'pointer', transition: 'all 0.2s' }}>
@@ -174,6 +199,10 @@ export default function AdminNotifications() {
                   {n.type === 'contact_message' && expanded === n._id && (
                     <ContactMessageExpanded meta={n.meta} />
                   )}
+                  {/* Expanded review */}
+                  {n.type === 'new_review' && expanded === n._id && (
+                    <ReviewExpanded meta={n.meta} />
+                  )}
                   <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
                     <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: meta.bg, color: meta.color }}>
                       {n.type.replace('_', ' ')}
@@ -182,6 +211,12 @@ export default function AdminNotifications() {
                       <button onClick={e => { e.stopPropagation(); setExpanded(prev => prev === n._id ? null : n._id); }}
                         style={{ fontSize: 11, color: '#92400E', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}>
                         {expanded === n._id ? 'Hide message ▲' : 'View message ▼'}
+                      </button>
+                    )}
+                    {n.type === 'new_review' && (
+                      <button onClick={e => { e.stopPropagation(); setExpanded(prev => prev === n._id ? null : n._id); }}
+                        style={{ fontSize: 11, color: '#92400E', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}>
+                        {expanded === n._id ? 'Hide review ▲' : 'View review ▼'}
                       </button>
                     )}
                     {!n.read && (

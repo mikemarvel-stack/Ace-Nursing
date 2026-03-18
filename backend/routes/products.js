@@ -3,6 +3,7 @@ const router = express.Router();
 const Product = require('../models/Product');
 const { protect, restrictTo, optionalAuth } = require('../middleware/auth');
 const asyncHandler = require('../utils/asyncHandler');
+const { createNotification } = require('../utils/notifications');
 
 // ─── GET /api/products/admin/all ──────────────────────────────────────────────
 router.get('/admin/all', protect, restrictTo('admin'), asyncHandler(async (req, res) => {
@@ -118,6 +119,15 @@ router.post('/:id/reviews', protect, asyncHandler(async (req, res) => {
   product.reviews.push({ user: req.user._id, name: req.user.fullName, rating: Number(rating), comment });
   product.updateRating();
   await product.save();
+
+  createNotification({
+    type: 'new_review',
+    title: 'New Review Submitted',
+    message: `${req.user.fullName} rated "${product.title}" ${rating}★${comment ? ` — "${comment.slice(0, 80)}${comment.length > 80 ? '…' : ''}"` : ''}`,
+    link: '/admin/products',
+    meta: { productId: product._id, productTitle: product.title, rating: Number(rating), comment, userId: req.user._id },
+    userId: null,
+  });
 
   res.status(201).json({ message: 'Review added successfully.', rating: product.rating });
 }));
