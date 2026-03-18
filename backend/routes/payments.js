@@ -70,6 +70,7 @@ router.post('/paypal/create-order', optionalAuth, validate(createOrderSchema), a
 
 // POST /api/payments/paypal/capture
 router.post('/paypal/capture', optionalAuth, validate(captureOrderSchema), asyncHandler(async (req, res) => {
+    const { paypalOrderId, orderId } = req.body;
 
     const order = await Order.findById(orderId).populate('items.product');
     if (!order) return res.status(404).json({ error: 'Order not found.' });

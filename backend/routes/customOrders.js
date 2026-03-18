@@ -223,10 +223,9 @@ router.patch('/:id', asyncHandler(async (req, res) => {
     const existing = await CustomOrder.findById(req.params.id);
     if (existing) {
       // Generate a fresh signed URL for the delivery email
-      let emailDownloadUrl = deliveryDownloadUrl;
-      if (deliveryFileKey) {
-        emailDownloadUrl = await getSignedDownloadUrl(deliveryFileKey, 7 * 24 * 60 * 60).catch(() => deliveryDownloadUrl);
-      }
+      let emailDownloadUrl = deliveryFileKey
+        ? await getSignedDownloadUrl(deliveryFileKey, 7 * 24 * 60 * 60).catch(() => deliveryDownloadUrl)
+        : deliveryDownloadUrl;
       sendCustomOrderDelivered({ order: existing }).catch(console.error);
       if (existing.user) {
         createNotification({
