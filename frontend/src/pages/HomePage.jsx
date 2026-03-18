@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { productAPI } from '../api';
+import useSEO from '../hooks/useSEO';
 
 const TESTIMONIALS = [
   { name: 'Sarah M., RN', role: 'Registered Nurse – KNH', text: 'AceNursing\'s NCLEX guide was a game-changer. I passed on my first attempt and felt completely prepared.', rating: 5 },
@@ -32,6 +33,23 @@ export default function HomePage() {
   const navigate = useNavigate();
   const [featured, setFeatured] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  useSEO({
+    title: 'Premium Nursing Study Materials & NCLEX Prep',
+    description: 'AceNursing offers premium nursing study guides, NCLEX-RN & PN prep, pharmacology references, anatomy atlases, and clinical flashcards. Instant PDF download. Trusted by 25,000+ nursing students.',
+    canonical: 'https://acenursing.com/',
+    jsonLd: {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: 'AceNursing',
+      url: 'https://acenursing.com',
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: 'https://acenursing.com/shop?search={search_term_string}',
+        'query-input': 'required name=search_term_string',
+      },
+    },
+  });
 
   useEffect(() => {
     const promise = window.__featuredPromise || fetch(

@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useParams, useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { productAPI } from '../api';
+import useSEO from '../hooks/useSEO';
+
+const SITE_URL = 'https://acenursing.com';
 
 const CATS = ['All', 'Study Guides', 'Flashcards', 'Reference Cards', 'Checklists', 'Bundles'];
 
@@ -64,6 +67,15 @@ export default function ShopPage() {
   useEffect(() => {
     document.title = cat === 'All' ? 'Shop – Ace Nursing' : `${cat} – Shop | Ace Nursing`;
   }, [cat]);
+
+  const catSlug = cat !== 'All' ? cat.toLowerCase().replace(/\s+/g, '-') : '';
+  useSEO({
+    title: cat === 'All' ? 'Nursing Study Materials Shop' : `${cat} – Nursing Study Materials`,
+    description: cat === 'All'
+      ? 'Browse premium nursing study guides, NCLEX prep, pharmacology references, flashcards and bundles. Instant PDF download.'
+      : `Browse our ${cat} collection — premium nursing study materials for NCLEX prep and clinical excellence. Instant PDF download.`,
+    canonical: `${SITE_URL}${catSlug ? `/shop/${catSlug}` : '/shop'}`,
+  });
 
   // Single fetch effect: debounce only for search input, immediate for everything else
   useEffect(() => {

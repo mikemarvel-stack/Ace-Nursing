@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import useSEO from '../hooks/useSEO';
 
 const FAQS = [
   { q: 'How do I download my purchase?', a: 'After payment is confirmed you will receive an email with a secure download link. You can also access all your downloads from your Account page under "My Orders".' },
@@ -13,6 +14,21 @@ const FAQS = [
 
 export default function FAQPage() {
   const [open, setOpen] = useState(null);
+
+  useSEO({
+    title: 'Frequently Asked Questions',
+    description: 'Find answers to common questions about AceNursing study materials, downloads, refunds, and more.',
+    canonical: 'https://acenursing.com/faq',
+    jsonLd: {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: FAQS.map(f => ({
+        '@type': 'Question',
+        name: f.q,
+        acceptedAnswer: { '@type': 'Answer', text: f.a },
+      })),
+    },
+  });
 
   return (
     <div className="container" style={{ maxWidth: 720, padding: '72px 24px' }}>

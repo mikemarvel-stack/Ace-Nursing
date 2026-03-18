@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import api from '../api';
 import toast from 'react-hot-toast';
+import useSEO from '../hooks/useSEO';
 
 const SUBJECTS = [
   'Order & Download Issue',
@@ -15,6 +16,12 @@ export default function ContactPage() {
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '', subject: '', message: '' });
+
+  useSEO({
+    title: 'Contact Us',
+    description: 'Get in touch with AceNursing support. We respond within 24 hours on business days.',
+    canonical: 'https://acenursing.com/contact',
+  });
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 

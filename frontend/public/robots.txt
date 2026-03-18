@@ -1,9 +1,8 @@
 User-agent: *
 Allow: /
 Disallow: /admin
-Disallow: /admin/
 Disallow: /account
 Disallow: /checkout
 Disallow: /order-success
 
-Sitemap: https://acenursing.com/sitemap.xml
+Sitemap: https://ace-nursing.onrender.com/sitemap.xml

@@ -3,6 +3,9 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { productAPI } from '../api';
 import { useCartStore, useAuthStore } from '../store';
+import useSEO from '../hooks/useSEO';
+
+const SITE_URL = 'https://acenursing.com';
 
 const BADGE_COLORS = {
   'Best Seller': ['#FEF3C7', '#92400E'],
@@ -26,6 +29,51 @@ export default function ProductPage() {
   const [related, setRelated] = useState([]);
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
   const [submittingReview, setSubmittingReview] = useState(false);
+
+  const discount = product && product.originalPrice > product.price
+    ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) : 0;
+
+  useSEO(product ? {
+    title: product.seo?.metaTitle || product.title,
+    description: product.seo?.metaDescription || product.description?.slice(0, 155),
+    canonical: `${SITE_URL}/product/${product.slug}`,
+    image: product.coverImage?.url,
+    type: 'product',
+    jsonLd: {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: product.title,
+      description: product.description,
+      image: product.coverImage?.url || `${SITE_URL}/og-image.jpg`,
+      sku: product._id,
+      brand: { '@type': 'Brand', name: 'AceNursing' },
+      offers: {
+        '@type': 'Offer',
+        price: product.price.toFixed(2),
+        priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
+        url: `${SITE_URL}/product/${product.slug}`,
+        seller: { '@type': 'Organization', name: 'AceNursing' },
+      },
+      ...(product.rating?.count > 0 && {
+        aggregateRating: {
+          '@type': 'AggregateRating',
+          ratingValue: product.rating.average,
+          reviewCount: product.rating.count,
+          bestRating: 5,
+          worstRating: 1,
+        },
+      }),
+      ...(product.reviews?.length > 0 && {
+        review: product.reviews.slice(0, 5).map(r => ({
+          '@type': 'Review',
+          author: { '@type': 'Person', name: r.name },
+          reviewRating: { '@type': 'Rating', ratingValue: r.rating, bestRating: 5 },
+          reviewBody: r.comment,
+        })),
+      }),
+    },
+  } : {});
 
   useEffect(() => {
     setLoading(true);
@@ -80,9 +128,6 @@ export default function ProductPage() {
   );
 
   if (!product) return null;
-
-  const discount = product.originalPrice && product.originalPrice > product.price
-    ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) : 0;
 
   return (
     <div style={{ background: 'var(--cream)', paddingBottom: 72 }}>
