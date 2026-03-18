@@ -311,19 +311,19 @@ exports.sendCustomOrderAccepted = async ({ order }) => {
 };
 
 // ─── Email: Custom Order – Delivered ─────────────────────────────────────────
-exports.sendCustomOrderDelivered = async ({ order, downloadUrl }) => {
+exports.sendCustomOrderDelivered = async ({ order }) => {
+  const payUrl = `${process.env.FRONTEND_URL}/custom-order?pay=${order._id}`;
   const content = `
     <span class="badge" style="background:#D1FAE5;color:#065F46">🎉 Delivered</span>
     <h1 style="margin-top:16px">Your Assignment is Ready!</h1>
     <p>Hi ${order.customerInfo.firstName}, your assignment "${order.subject}" has been completed and is ready for download.</p>
-    ${downloadUrl ? `
     <div style="text-align:center;margin:28px 0">
-      <a href="${downloadUrl}" class="btn btn-gold">⬇ Download Assignment</a>
-    </div>` : ''}
+      <a href="${payUrl}" class="btn btn-gold">💳 Pay &amp; Download Assignment</a>
+    </div>
     <div class="info-box">
       <p>📋 Request #${order.orderNumber} · Delivered ${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}</p>
     </div>
-    <p>If you need any revisions, please log in to your <a href="${process.env.FRONTEND_URL}/account" style="color:#0C1B33;font-weight:600">account</a> and request a revision within 7 days.</p>
+    <p>Click the button above to complete payment and unlock your download. If you need any revisions, log in to your <a href="${process.env.FRONTEND_URL}/custom-order" style="color:#0C1B33;font-weight:600">orders page</a> and request a revision within 7 days.</p>
     <p style="font-size:13px;color:#999">Satisfied? We'd love a review! Reply to this email with your feedback.</p>
   `;
   return sendWithRetry({

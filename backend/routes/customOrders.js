@@ -11,6 +11,7 @@ const {
   sendCustomOrderDelivered,
 } = require('../utils/email');
 const asyncHandler = require('../utils/asyncHandler');
+const { getSignedDownloadUrl } = require('../utils/s3');
 
 // ── POST /api/custom-orders — submit a new request ───────────────────────────
 router.post('/', optionalAuth, asyncHandler(async (req, res) => {
@@ -207,25 +208,32 @@ router.post('/:id/quote', asyncHandler(async (req, res) => {
 
 // ── PATCH /api/custom-orders/:id — update status / notes / delivery ───────────
 router.patch('/:id', asyncHandler(async (req, res) => {
-  const { status, adminNotes, deliveryDownloadUrl, deliveryNotes } = req.body;
+  const { status, adminNotes, deliveryDownloadUrl, deliveryNotes, deliveryFileKey, deliveryOriginalName } = req.body;
   const update = {};
   if (status !== undefined)     update.status = status;
   if (adminNotes !== undefined) update.adminNotes = adminNotes;
 
   if (status === 'delivered') {
     update['delivery.deliveredAt'] = new Date();
+    if (deliveryFileKey)     update['delivery.fileKey'] = deliveryFileKey;
+    if (deliveryOriginalName) update['delivery.originalName'] = deliveryOriginalName;
     if (deliveryDownloadUrl) update['delivery.downloadUrl'] = deliveryDownloadUrl;
     if (deliveryNotes)       update['delivery.notes'] = deliveryNotes;
 
     const existing = await CustomOrder.findById(req.params.id);
     if (existing) {
-      sendCustomOrderDelivered({ order: existing, downloadUrl: deliveryDownloadUrl }).catch(console.error);
+      // Generate a fresh signed URL for the delivery email
+      let emailDownloadUrl = deliveryDownloadUrl;
+      if (deliveryFileKey) {
+        emailDownloadUrl = await getSignedDownloadUrl(deliveryFileKey, 7 * 24 * 60 * 60).catch(() => deliveryDownloadUrl);
+      }
+      sendCustomOrderDelivered({ order: existing }).catch(console.error);
       if (existing.user) {
         createNotification({
           type: 'custom_order',
           title: `Assignment Delivered 🎉 — #${existing.orderNumber}`,
-          message: `Your assignment "${existing.subject}" has been delivered. Please review and confirm completion.`,
-          link: '/account',
+          message: `Your assignment "${existing.subject}" has been delivered. Pay to download it now.`,
+          link: `/custom-order?pay=${existing._id}`,
           meta: { orderId: existing._id },
           userId: existing.user,
         });

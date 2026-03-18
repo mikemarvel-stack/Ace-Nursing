@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const Order = require('../models/Order');
+const CustomOrder = require('../models/CustomOrder');
 const Product = require('../models/Product');
 const User = require('../models/User');
 const { protect, optionalAuth } = require('../middleware/auth');
@@ -230,6 +231,73 @@ router.get('/orders', protect, asyncHandler(async (req, res) => {
       .sort('-createdAt')
       .select('-items.downloadToken');
     res.json({ orders });
+}));
+
+// POST /api/payments/paypal/create-custom-order
+router.post('/paypal/create-custom-order', protect, asyncHandler(async (req, res) => {
+  const { customOrderId } = req.body;
+  const customOrder = await CustomOrder.findOne({
+    _id: customOrderId,
+    $or: [{ user: req.user._id }, { 'customerInfo.email': req.user.email }],
+  });
+  if (!customOrder) return res.status(404).json({ error: 'Custom order not found.' });
+  if (customOrder.status !== 'delivered') return res.status(400).json({ error: 'Order is not yet delivered.' });
+  if (customOrder.payment.status === 'paid') return res.status(409).json({ error: 'Already paid.' });
+  if (!customOrder.quote?.price) return res.status(400).json({ error: 'No quote price set.' });
+
+  const paypalOrder = await createPayPalOrder({
+    amount: customOrder.quote.price,
+    currency: 'USD',
+    orderId: customOrder._id.toString(),
+    items: [{ title: customOrder.subject, price: customOrder.quote.price, quantity: 1 }],
+  });
+
+  customOrder.payment.paypalOrderId = paypalOrder.id;
+  await customOrder.save();
+
+  res.json({ paypalOrderId: paypalOrder.id, total: customOrder.quote.price });
+}));
+
+// POST /api/payments/paypal/capture-custom-order
+router.post('/paypal/capture-custom-order', protect, asyncHandler(async (req, res) => {
+  const { paypalOrderId, customOrderId } = req.body;
+  if (!paypalOrderId || !customOrderId) return res.status(400).json({ error: 'paypalOrderId and customOrderId are required.' });
+
+  const customOrder = await CustomOrder.findOne({
+    _id: customOrderId,
+    $or: [{ user: req.user._id }, { 'customerInfo.email': req.user.email }],
+  });
+  if (!customOrder) return res.status(404).json({ error: 'Custom order not found.' });
+  if (customOrder.payment.status === 'paid') return res.status(409).json({ error: 'Already paid.' });
+
+  const capture = await capturePayPalOrder(paypalOrderId);
+  if (capture.status !== 'COMPLETED') {
+    return res.status(400).json({ error: 'PayPal payment was not completed.' });
+  }
+
+  customOrder.payment.status = 'paid';
+  customOrder.payment.method = 'paypal';
+  customOrder.payment.paidAt = new Date();
+  customOrder.payment.paypalOrderId = paypalOrderId;
+  customOrder.status = 'completed';
+  await customOrder.save();
+
+  // Generate fresh signed download URL from stored fileKey
+  let downloadUrl = customOrder.delivery.downloadUrl;
+  if (customOrder.delivery.fileKey) {
+    downloadUrl = await getSignedDownloadUrl(customOrder.delivery.fileKey, 7 * 24 * 60 * 60).catch(() => downloadUrl);
+  }
+
+  createNotification({
+    type: 'custom_order',
+    title: `Payment Received — #${customOrder.orderNumber}`,
+    message: `${customOrder.customerInfo.firstName} paid $${customOrder.quote.price.toFixed(2)} for assignment "${customOrder.subject}".`,
+    link: '/admin/custom-orders',
+    meta: { orderId: customOrder._id },
+    userId: null,
+  });
+
+  res.json({ success: true, downloadUrl, orderNumber: customOrder.orderNumber });
 }));
 
 module.exports = router;

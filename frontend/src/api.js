@@ -74,6 +74,8 @@ export const authAPI = {
 export const paymentAPI = {
   createPayPalOrder: (data) => api.post('/payments/paypal/create-order', data),
   capturePayPalOrder: (data) => api.post('/payments/paypal/capture', data),
+  createCustomPayPalOrder: (data) => api.post('/payments/paypal/create-custom-order', data),
+  captureCustomPayPalOrder: (data) => api.post('/payments/paypal/capture-custom-order', data),
   getMyOrders: () => api.get('/payments/orders'),
 };
 
@@ -83,6 +85,12 @@ export const uploadAPI = {
     api.post('/upload/product-full', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 120000,
+    }),
+  uploadCustomOrderFile: (formData, onProgress) =>
+    api.post('/upload/custom-order-file', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
+      onUploadProgress: onProgress,
     }),
   uploadPdf: (formData) =>
     api.post('/upload/pdf', formData, {

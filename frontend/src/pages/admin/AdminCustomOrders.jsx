@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import toast from 'react-hot-toast';
-import { customOrdersAPI } from '../../api';
+import { customOrdersAPI, uploadAPI } from '../../api';
 
 const STATUS_META = {
   submitted:          { label: 'Submitted',     color: '#1E40AF', bg: '#DBEAFE' },
@@ -42,7 +42,10 @@ export default function AdminCustomOrders() {
   const [filter, setFilter] = useState('all');
   const [selected, setSelected] = useState(null);
   const [quoteForm, setQuoteForm] = useState({ price: '', daysToComplete: '', adminNotes: '' });
-  const [deliveryForm, setDeliveryForm] = useState({ downloadUrl: '', notes: '' });
+  const [deliveryForm, setDeliveryForm] = useState({ notes: '' });
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadedFile, setUploadedFile] = useState(null); // { key, originalName, signedUrl }
+  const fileInputRef = useRef();
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -101,17 +104,20 @@ export default function AdminCustomOrders() {
   };
 
   const handleDeliver = async () => {
-    if (!deliveryForm.downloadUrl) { toast.error('Download URL is required.'); return; }
+    if (!uploadedFile) { toast.error('Please upload a file first.'); return; }
     setSaving(true);
     try {
       await customOrdersAPI.update(selected._id, {
         status: 'delivered',
-        deliveryDownloadUrl: deliveryForm.downloadUrl,
+        deliveryFileKey: uploadedFile.key,
+        deliveryOriginalName: uploadedFile.originalName,
         deliveryNotes: deliveryForm.notes,
       });
       toast.success('Assignment marked as delivered! Customer notified.');
       setSelected(null);
-      setDeliveryForm({ downloadUrl: '', notes: '' });
+      setDeliveryForm({ notes: '' });
+      setUploadedFile(null);
+      setUploadProgress(0);
       load();
     } catch { toast.error('Failed to mark as delivered.'); }
     finally { setSaving(false); }
@@ -285,19 +291,51 @@ export default function AdminCustomOrders() {
             {['accepted', 'in_progress', 'revision_requested'].includes(selected.status) && (
               <div style={{ border: '1px solid #6EE7B7', borderRadius: 12, padding: '16px', background: '#F0FDF4', marginBottom: 16 }}>
                 <p style={{ fontSize: 14, fontWeight: 700, color: '#065F46', marginBottom: 12 }}>🎉 Mark as Delivered</p>
+
+                {/* File picker */}
                 <div style={{ marginBottom: 10 }}>
-                  <label className="label">Download URL *</label>
-                  <input className="input" value={deliveryForm.downloadUrl}
-                    onChange={e => setDeliveryForm(f => ({ ...f, downloadUrl: e.target.value }))}
-                    placeholder="https://drive.google.com/… or signed S3 URL" />
+                  <label className="label">Upload Assignment File *</label>
+                  {uploadedFile ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#D1FAE5', borderRadius: 8, padding: '10px 14px' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#065F46', flex: 1 }}>✅ {uploadedFile.originalName}</span>
+                      <button onClick={() => { setUploadedFile(null); setUploadProgress(0); }}
+                        style={{ border: 'none', background: 'transparent', color: '#DC2626', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
+                    </div>
+                  ) : (
+                    <>
+                      <input ref={fileInputRef} type="file" style={{ display: 'none' }}
+                        onChange={async (e) => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          const fd = new FormData();
+                          fd.append('file', file);
+                          fd.append('customOrderId', selected._id);
+                          try {
+                            setUploadProgress(1);
+                            const res = await uploadAPI.uploadCustomOrderFile(fd, (evt) => {
+                              if (evt.total) setUploadProgress(Math.round((evt.loaded / evt.total) * 100));
+                            });
+                            setUploadedFile({ key: res.data.key, originalName: res.data.originalName, signedUrl: res.data.signedUrl });
+                            toast.success('File uploaded!');
+                          } catch { toast.error('Upload failed.'); setUploadProgress(0); }
+                          e.target.value = '';
+                        }}
+                      />
+                      <button className="btn btn-outline btn-sm" onClick={() => fileInputRef.current.click()}
+                        style={{ width: '100%', justifyContent: 'center' }} disabled={uploadProgress > 0}>
+                        {uploadProgress > 0 ? `Uploading… ${uploadProgress}%` : '📎 Choose File'}
+                      </button>
+                    </>
+                  )}
                 </div>
+
                 <div style={{ marginBottom: 12 }}>
                   <label className="label">Delivery Notes (optional)</label>
                   <textarea className="input" rows={2} value={deliveryForm.notes}
                     onChange={e => setDeliveryForm(f => ({ ...f, notes: e.target.value }))}
                     placeholder="Any notes for the customer about the delivered work…" style={{ resize: 'vertical' }} />
                 </div>
-                <button className="btn btn-primary" style={{ background: '#059669' }} onClick={handleDeliver} disabled={saving}>
+                <button className="btn btn-primary" style={{ background: '#059669' }} onClick={handleDeliver} disabled={saving || !uploadedFile}>
                   {saving ? 'Saving…' : '✅ Mark Delivered & Notify Customer'}
                 </button>
               </div>

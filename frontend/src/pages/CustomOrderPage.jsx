@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { PayPalButtons, usePayPalScriptReducer } from '@paypal/react-paypal-js';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store';
-import { customOrdersAPI } from '../api';
+import { customOrdersAPI, paymentAPI } from '../api';
 import useSEO from '../hooks/useSEO';
 
 const TYPES = ['Essay', 'Case Study', 'Care Plan', 'Research Paper', 'Presentation', 'Exam Prep', 'Other'];
@@ -46,7 +47,68 @@ function Countdown({ dueAt }) {
   );
 }
 
-function OrderCard({ order, onRespond, onRevision }) {
+function PayNowModal({ order, onClose, onPaid }) {
+  const [{ isPending }] = usePayPalScriptReducer();
+  const [internalOrderId] = useState(order._id);
+  const [processing, setProcessing] = useState(false);
+
+  const createOrder = async () => {
+    const res = await paymentAPI.createCustomPayPalOrder({ customOrderId: order._id });
+    return res.data.paypalOrderId;
+  };
+
+  const onApprove = async (data) => {
+    setProcessing(true);
+    try {
+      const res = await paymentAPI.captureCustomPayPalOrder({
+        paypalOrderId: data.orderID,
+        customOrderId: internalOrderId,
+      });
+      toast.success('Payment successful! Downloading now…');
+      onPaid(res.data.downloadUrl);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Payment failed. Please try again.');
+    } finally { setProcessing(false); }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 24 }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 440, padding: '28px 28px 32px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h2 className="serif" style={{ color: 'var(--navy)', fontSize: 22 }}>Pay & Download</h2>
+          <button onClick={onClose} style={{ border: 'none', background: 'transparent', fontSize: 24, cursor: 'pointer', color: 'var(--muted)' }}>×</button>
+        </div>
+        <div style={{ background: 'var(--gray)', borderRadius: 12, padding: '14px 16px', marginBottom: 20 }}>
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 2 }}>{order.assignmentType} — {order.subject}</p>
+          <p style={{ fontSize: 26, fontWeight: 800, color: 'var(--navy)' }}>${order.quote.price.toFixed(2)}</p>
+        </div>
+        {processing ? (
+          <div style={{ textAlign: 'center', padding: 24 }}>
+            <div className="spinner" style={{ borderTopColor: 'var(--navy)', borderColor: 'var(--border)', width: 36, height: 36, borderWidth: 3, margin: '0 auto 12px' }} />
+            <p style={{ color: 'var(--muted)', fontSize: 14 }}>Processing payment…</p>
+          </div>
+        ) : isPending ? (
+          <div style={{ textAlign: 'center', padding: 24 }}>
+            <div className="spinner" style={{ borderTopColor: '#C49A3C', borderColor: '#ddd', width: 32, height: 32, borderWidth: 3, margin: '0 auto 10px' }} />
+            <p style={{ color: 'var(--muted)', fontSize: 13 }}>Loading PayPal…</p>
+          </div>
+        ) : (
+          <PayPalButtons
+            style={{ layout: 'vertical', color: 'gold', shape: 'rect', label: 'pay' }}
+            createOrder={createOrder}
+            onApprove={onApprove}
+            onError={() => toast.error('PayPal error. Please try again.')}
+            onCancel={() => toast('Payment cancelled.')}
+            disabled={processing}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function OrderCard({ order, onRespond, onRevision, onPayNow }) {
   const sm = STATUS_META[order.status] || STATUS_META.submitted;
   const [declining, setDeclining] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
@@ -98,13 +160,19 @@ function OrderCard({ order, onRespond, onRevision }) {
         </div>
       )}
 
-      {/* Delivery download */}
-      {order.status === 'delivered' && order.delivery?.downloadUrl && (
+      {/* Delivered — pay to download */}
+      {order.status === 'delivered' && (
         <div style={{ background: '#D1FAE5', border: '1px solid #6EE7B7', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
           <p style={{ fontSize: 14, fontWeight: 700, color: '#065F46', marginBottom: 8 }}>🎉 Your assignment is ready!</p>
-          <a href={order.delivery.downloadUrl} className="btn btn-primary btn-sm" style={{ textDecoration: 'none' }} target="_blank" rel="noopener noreferrer">
-            ⬇ Download Assignment
-          </a>
+          {order.payment?.status === 'paid' ? (
+            order.delivery?.downloadUrl
+              ? <a href={order.delivery.downloadUrl} className="btn btn-primary btn-sm" style={{ textDecoration: 'none' }} target="_blank" rel="noopener noreferrer">⬇ Download Assignment</a>
+              : <p style={{ fontSize: 13, color: '#065F46' }}>Payment confirmed. Download link will arrive by email shortly.</p>
+          ) : (
+            <button className="btn btn-primary btn-sm" style={{ background: '#C49A3C', borderColor: '#C49A3C' }} onClick={() => onPayNow(order)}>
+              💳 Pay Now → Download
+            </button>
+          )}
         </div>
       )}
 
@@ -153,11 +221,14 @@ function OrderCard({ order, onRespond, onRevision }) {
 export default function CustomOrderPage() {
   const { isAuthenticated, user } = useAuthStore();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [view, setView] = useState('form'); // 'form' | 'success' | 'myorders'
   const [myOrders, setMyOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submittedOrder, setSubmittedOrder] = useState(null);
+  const [payingOrder, setPayingOrder] = useState(null); // order being paid
+  const [downloadUrl, setDownloadUrl] = useState(null); // post-payment download URL
 
   const [form, setForm] = useState({
     firstName: user?.firstName || '',
@@ -182,16 +253,33 @@ export default function CustomOrderPage() {
 
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
 
-  const loadMyOrders = async () => {
+  const loadMyOrders = async (autoPayId) => {
     if (!isAuthenticated) return;
     setLoadingOrders(true);
     try {
       const res = await customOrdersAPI.getMine();
       setMyOrders(res.data.orders);
       setView('myorders');
+      if (autoPayId) {
+        const target = res.data.orders.find(o => o._id === autoPayId);
+        if (target && target.status === 'delivered' && target.payment?.status !== 'paid') {
+          setPayingOrder(target);
+        }
+      }
     } catch { toast.error('Failed to load orders'); }
     finally { setLoadingOrders(false); }
   };
+
+  // Handle ?pay=ORDER_ID from email / notification link
+  useEffect(() => {
+    const payId = searchParams.get('pay');
+    if (payId && isAuthenticated) {
+      loadMyOrders(payId);
+      setSearchParams({}, { replace: true });
+    } else if (payId && !isAuthenticated) {
+      navigate('/login?redirect=/custom-order?pay=' + payId);
+    }
+  }, [isAuthenticated]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -226,8 +314,30 @@ export default function CustomOrderPage() {
     } catch { toast.error('Failed to submit revision request.'); }
   };
 
+  const handlePaid = (url) => {
+    setPayingOrder(null);
+    setDownloadUrl(url);
+    loadMyOrders();
+    if (url) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  };
+
   return (
     <div style={{ background: 'var(--cream)', minHeight: '80vh' }}>
+      {payingOrder && (
+        <PayNowModal
+          order={payingOrder}
+          onClose={() => setPayingOrder(null)}
+          onPaid={handlePaid}
+        />
+      )}
       {/* Hero */}
       <div style={{ background: 'var(--navy)', padding: '52px 0 44px' }}>
         <div className="container" style={{ maxWidth: 760 }}>
@@ -294,7 +404,7 @@ export default function CustomOrderPage() {
               </div>
             ) : (
               myOrders.map(o => (
-                <OrderCard key={o._id} order={o} onRespond={handleRespond} onRevision={handleRevision} />
+                <OrderCard key={o._id} order={o} onRespond={handleRespond} onRevision={handleRevision} onPayNow={setPayingOrder} />
               ))
             )}
           </div>

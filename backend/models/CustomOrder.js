@@ -62,9 +62,11 @@ const customOrderSchema = new mongoose.Schema(
 
     // ── Delivery ──────────────────────────────────────────────────────────────
     delivery: {
-      dueAt:       Date,   // set when user accepts = acceptedAt + daysToComplete
+      dueAt:       Date,
       deliveredAt: Date,
-      downloadUrl: String, // admin pastes signed URL or external link
+      fileKey:     String, // R2 object key — used to generate fresh signed URLs
+      originalName: String,
+      downloadUrl: String, // fallback / external link
       notes:       String,
     },
 
