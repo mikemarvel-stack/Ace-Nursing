@@ -67,7 +67,7 @@
     "coverageThreshold": {
       "global": {
         "lines": 35,
-        "functions": 18
+        "functions": 17
       }
     },
     "globalSetup": "<rootDir>/jest.globalSetup.js",

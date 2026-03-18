@@ -6,7 +6,7 @@ const getResend = () => {
   return _resend;
 };
 
-const FROM = `${process.env.FROM_NAME || 'AceNursing'} <${process.env.FROM_EMAIL || 'orders@acenursing.com'}>`;
+const FROM = `${process.env.FROM_NAME || 'AceNursing'} <${process.env.FROM_EMAIL || 'supportacenursing@gmail.com'}>`;
 
 // Retry helper — exponential backoff, up to 3 attempts
 async function sendWithRetry(payload, attempts = 3) {
@@ -67,7 +67,7 @@ const emailWrapper = (content) => `
     <div class="body">${content}</div>
     <div class="footer">
       <p>© ${new Date().getFullYear()} AceNursing · <a href="https://acenursing.com/support" style="color:#999">Support</a> · <a href="https://acenursing.com/refunds" style="color:#999">Refund Policy</a></p>
-      <p style="margin-top:6px">If you have questions, reply to this email or contact support@acenursing.com</p>
+      <p style="margin-top:6px">If you have questions, reply to this email or contact supportacenursing@gmail.com</p>
     </div>
   </div>
 </div>
@@ -127,7 +127,7 @@ exports.sendOrderConfirmation = async ({ order, downloadLinks }) => {
     <p style="font-size:13px; color:#999;">Download links are valid for 30 days. Each link can be used multiple times within that period.</p>
     ${downloadLinksHtml}
 
-    <p style="margin-top: 24px; font-size: 13px; color: #999;">Having issues downloading? Contact us at support@acenursing.com and we'll help immediately.</p>
+    <p style="margin-top: 24px; font-size: 13px; color: #999;">Having issues downloading? Contact us at supportacenursing@gmail.com and we'll help immediately.</p>
   `;
 
   return sendWithRetry({
@@ -224,7 +224,7 @@ exports.sendCustomOrderConfirmation = async ({ order }) => {
     </table>
     ${order.attachmentNotes ? `<div class="info-box" style="background:#FEF3C7;border-color:#F59E0B"><p style="color:#92400E">📎 Attachment notes: ${order.attachmentNotes}</p></div>` : ''}
     <p style="margin-top:20px">You'll receive an email with our quote shortly. You can also track your request in your <a href="${process.env.FRONTEND_URL}/account" style="color:#0C1B33;font-weight:600">account dashboard</a>.</p>
-    <p style="font-size:13px;color:#999">Questions? Reply to this email or contact support@acenursing.com</p>
+    <p style="font-size:13px;color:#999">Questions? Reply to this email or contact supportacenursing@gmail.com</p>
   `;
   return sendWithRetry({
     from: FROM,

@@ -1,9 +1,28 @@
 const express = require('express');
 const router = express.Router();
+const axios = require('axios');
 const Notification = require('../models/Notification');
 const { protect, restrictTo } = require('../middleware/auth');
 const asyncHandler = require('../utils/asyncHandler');
 const { validate, contactSchema } = require('../utils/validation');
+
+// Push a message to Tawk.to as a new conversation via REST API
+async function pushToTawk(name, email, subject, message) {
+  const apiKey = process.env.TAWK_API_KEY;
+  const inboxId = process.env.TAWK_INBOX_ID;
+  if (!apiKey || !inboxId) return;
+  try {
+    await axios.post(
+      `https://api.tawk.to/v1/inboxes/${inboxId}/conversations`,
+      {
+        subject: subject || 'Contact Form Message',
+        message,
+        contact: { name, email },
+      },
+      { headers: { Authorization: `Bearer ${apiKey}` } }
+    );
+  } catch (_) { /* non-fatal */ }
+}
 
 // POST /api/notifications/contact — public
 router.post('/contact', validate(contactSchema), asyncHandler(async (req, res) => {
@@ -16,6 +35,7 @@ router.post('/contact', validate(contactSchema), asyncHandler(async (req, res) =
     meta: { name, email, phone: phone || '', subject: subject || '', message },
     userId: null,
   });
+  pushToTawk(name, email, subject, `[${subject}] ${message}\n\nFrom: ${name} <${email}>${phone ? ` | ${phone}` : ''}`);
   res.json({ success: true });
 }));
 

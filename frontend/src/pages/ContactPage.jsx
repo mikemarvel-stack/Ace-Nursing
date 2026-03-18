@@ -33,7 +33,7 @@ export default function ContactPage() {
       await api.post('/notifications/contact', form);
       setSent(true);
     } catch {
-      toast.error('Failed to send. Please email us directly at support@acenursing.com');
+      toast.error('Failed to send. Please email us directly at supportacenursing@gmail.com');
     } finally {
       setLoading(false);
     }
@@ -56,7 +56,7 @@ export default function ContactPage() {
         {/* Info cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 40 }} className="three-col-grid">
           {[
-            ['📧', 'Email', 'support@acenursing.com'],
+            ['📧', 'Email', 'supportacenursing@gmail.com'],
             ['⏰', 'Response Time', 'Within 24 hours'],
             ['🕐', 'Business Hours', 'Mon–Fri, 9am–6pm EAT'],
           ].map(([icon, label, value]) => (

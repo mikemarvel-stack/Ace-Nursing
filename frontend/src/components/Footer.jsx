@@ -90,7 +90,7 @@ export default function Footer() {
               </Link>
             ))}
             <div style={{ marginTop: 20, fontSize: 13 }}>
-              <p style={{ marginBottom: 4 }}>📧 support@acenursing.com</p>
+              <p style={{ marginBottom: 4 }}>📧 supportacenursing@gmail.com</p>
             </div>
           </div>
         </div>

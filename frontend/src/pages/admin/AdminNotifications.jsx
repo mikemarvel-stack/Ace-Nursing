@@ -39,7 +39,7 @@ function ContactMessageExpanded({ meta }) {
         {meta.message}
       </div>
       <a
-        href={`mailto:${meta.email}?subject=Re: ${encodeURIComponent(meta.subject || 'Your message to AceNursing')}`}
+        href={`mailto:${meta.email}?subject=Re: ${encodeURIComponent(meta.subject || 'Your message to AceNursing')}&cc=supportacenursing@gmail.com`}
         className="btn btn-sm"
         style={{ marginTop: 12, background: '#92400E', color: '#fff', textDecoration: 'none', display: 'inline-flex' }}
         onClick={e => e.stopPropagation()}
