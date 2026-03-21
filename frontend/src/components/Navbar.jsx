@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore, useCartStore } from '../store';
 import { notificationsAPI } from '../api';
 import toast from 'react-hot-toast';
-import { CATEGORY_GROUPS, slugifyCategory } from '../categories';
+import { CATEGORY_GROUPS } from '../categories';
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -61,9 +61,7 @@ export default function Navbar() {
 
   const MATERIALS = [
     { label: 'All Materials', path: '/shop' },
-    ...CATEGORY_GROUPS[0].items.map(c => ({ label: c, path: `/shop/${slugifyCategory(c)}` })),
-    { label: '── Courses ──', path: null },
-    ...CATEGORY_GROUPS[1].items.map(c => ({ label: c, path: `/shop/${slugifyCategory(c)}` })),
+    ...CATEGORY_GROUPS.map(g => ({ label: g.label, path: `/shop?group=${encodeURIComponent(g.label)}` })),
   ];
 
   useEffect(() => {
@@ -192,10 +190,10 @@ export default function Navbar() {
         </div>
 
         {/* Right Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* Notification Bell — logged-in users only */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Notification Bell — logged-in users only, desktop */}
           {isAuthenticated && (
-            <div style={{ position: 'relative' }}>
+            <div className="hide-mobile" style={{ position: 'relative' }}>
               <button
                 onClick={() => { setNotifOpen(v => !v); setUserMenuOpen(false); }}
                 style={{ position: 'relative', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', width: 38, height: 38, borderRadius: 10, fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
@@ -248,7 +246,7 @@ export default function Navbar() {
           )}
 
           {/* Cart */}
-          <button onClick={openCart} style={{ position: 'relative', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', padding: '8px 16px', borderRadius: 10, fontSize: 14, display: 'flex', alignItems: 'center', gap: 7, transition: 'all 0.2s' }}
+          <button onClick={openCart} style={{ position: 'relative', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', padding: '8px 12px', borderRadius: 10, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.2s' }}
             onMouseOver={e => e.currentTarget.style.background = 'rgba(196,154,60,0.2)'}
             onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}>
             🛒 <span className="hide-mobile">Cart</span>
@@ -259,20 +257,14 @@ export default function Navbar() {
             )}
           </button>
 
-          {/* Hamburger — mobile only */}
-          <button className="show-mobile" onClick={() => setMenuOpen(v => !v)}
-            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', width: 38, height: 38, borderRadius: 9, fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {menuOpen ? '✕' : '☰'}
-          </button>
-
-          {/* Auth */}
+          {/* Auth — desktop */}
           {isAuthenticated ? (
-            <div style={{ position: 'relative' }}>
+            <div className="hide-mobile" style={{ position: 'relative' }}>
               <button onClick={() => setUserMenuOpen(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', padding: '7px 14px', borderRadius: 10, fontSize: 14 }}>
                 <div style={{ width: 26, height: 26, background: 'var(--primary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12 }}>
                   {user?.firstName?.[0]?.toUpperCase()}
                 </div>
-                <span className="hide-mobile">{user?.firstName}</span>
+                {user?.firstName}
               </button>
               {userMenuOpen && (
                 <div className="animate-fade-in" style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', background: '#fff', border: '1px solid var(--border)', borderRadius: 12, padding: '8px 0', minWidth: 180, boxShadow: 'var(--shadow-lg)', zIndex: 100 }}>
@@ -294,8 +286,8 @@ export default function Navbar() {
               )}
             </div>
           ) : (
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Link to="/login" className="hide-mobile" style={{ color: 'rgba(255,255,255,0.8)', fontSize: 14, padding: '8px 14px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.2)', transition: 'all 0.2s' }}
+            <div className="hide-mobile" style={{ display: 'flex', gap: 8 }}>
+              <Link to="/login" style={{ color: 'rgba(255,255,255,0.8)', fontSize: 14, padding: '8px 14px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.2)', transition: 'all 0.2s' }}
                 onMouseOver={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)'}
                 onMouseOut={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'}>
                 Log in
@@ -307,32 +299,54 @@ export default function Navbar() {
               </Link>
             </div>
           )}
+
+          {/* Hamburger — mobile only */}
+          <button className="show-mobile" onClick={() => setMenuOpen(v => !v)}
+            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', width: 38, height: 38, borderRadius: 9, fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            {menuOpen ? '✕' : '☰'}
+          </button>
         </div>
       </div>
 
       {/* Mobile Menu Drawer */}
       {menuOpen && (
-        <div className="animate-fade-in" style={{ background: '#0C1B33', borderTop: '1px solid rgba(255,255,255,0.08)', padding: '16px 24px 24px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div className="animate-fade-in" style={{ background: '#0C1B33', borderTop: '1px solid rgba(255,255,255,0.08)', padding: '16px 20px 24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+            {/* Auth row at top of mobile menu */}
+            {isAuthenticated ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0 14px', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 32, height: 32, background: 'var(--primary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, color: '#fff' }}>
+                    {user?.firstName?.[0]?.toUpperCase()}
+                  </div>
+                  <div>
+                    <div style={{ color: '#fff', fontWeight: 600, fontSize: 14 }}>{user?.firstName} {user?.lastName}</div>
+                    <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{user?.email}</div>
+                  </div>
+                </div>
+                <button onClick={handleLogout} style={{ background: 'rgba(220,38,38,0.15)', border: '1px solid rgba(220,38,38,0.3)', color: '#F87171', padding: '6px 12px', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>Log Out</button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 10, padding: '4px 0 16px', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: 4 }}>
+                <Link to="/login" style={{ flex: 1, textAlign: 'center', color: '#fff', fontSize: 14, fontWeight: 600, padding: '10px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.25)', background: 'rgba(255,255,255,0.06)' }}>Log In</Link>
+                <Link to="/register" style={{ flex: 1, textAlign: 'center', background: 'var(--primary)', color: '#fff', fontSize: 14, fontWeight: 600, padding: '10px', borderRadius: 9 }}>Sign Up</Link>
+              </div>
+            )}
+
             {[
-              { label: 'Home', path: '/' },
-              { label: 'All Materials', path: '/shop' },
-              { label: 'Custom Orders', path: '/custom-order' },
-              ...CATEGORY_GROUPS[0].items.map(c => ({ label: c, path: `/shop/${slugifyCategory(c)}` })),
-              ...CATEGORY_GROUPS[1].items.map(c => ({ label: c, path: `/shop/${slugifyCategory(c)}` })),
+              { label: '🏠 Home', path: '/' },
+              { label: '🛍️ All Materials', path: '/shop' },
+              { label: '📝 Custom Orders', path: '/custom-order' },
+              ...CATEGORY_GROUPS.map(g => ({ label: `📂 ${g.label}`, path: `/shop?group=${encodeURIComponent(g.label)}` })),
+              ...(isAuthenticated ? [{ label: '👤 My Account', path: '/account' }] : []),
               ...(isAdmin() ? [{ label: '⚙️ Admin Panel', path: '/admin' }] : []),
             ].map(item => (
               <Link key={item.path} to={item.path}
-                style={{ color: location.pathname === item.path ? '#C49A3C' : 'rgba(255,255,255,0.85)', fontSize: 15, fontWeight: location.pathname === item.path ? 700 : 400, padding: '11px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                style={{ color: location.pathname === item.path ? '#C49A3C' : 'rgba(255,255,255,0.85)', fontSize: 15, fontWeight: location.pathname === item.path ? 700 : 400, padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'block' }}>
                 {item.label}
               </Link>
             ))}
-            {!isAuthenticated && (
-              <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-                <Link to="/login" className="btn btn-outline" style={{ flex: 1, color: '#fff', borderColor: 'rgba(255,255,255,0.3)', fontSize: 14 }}>Log In</Link>
-                <Link to="/register" className="btn btn-gold" style={{ flex: 1, fontSize: 14 }}>Sign Up</Link>
-              </div>
-            )}
           </div>
         </div>
       )}
