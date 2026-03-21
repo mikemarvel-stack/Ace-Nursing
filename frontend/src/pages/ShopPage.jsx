@@ -26,6 +26,7 @@ const SORT_OPTIONS = [
 export default function ShopPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const categoryQuery = searchParams.get('category');
+  const groupQuery = searchParams.get('group');
   const { category: routeCategory } = useParams();
   const navigate = useNavigate();
 
@@ -37,27 +38,39 @@ export default function ShopPage() {
   const [cat, setCat] = useState(
     routeCategory ? (categoryFromSlug(routeCategory) || 'All') : categoryQuery || 'All'
   );
+  const [activeGroup, setActiveGroup] = useState(
+    groupQuery ? CATEGORY_GROUPS.find(g => g.label === groupQuery) || null : null
+  );
   const [sort, setSort] = useState(searchParams.get('sort') || 'featured');
   const [page, setPage] = useState(1);
 
-  // Sync category from URL
+  // Sync category / group from URL
   useEffect(() => {
-    const next = routeCategory ? (categoryFromSlug(routeCategory) || 'All') : categoryQuery || 'All';
-    setCat(next);
+    if (groupQuery) {
+      const group = CATEGORY_GROUPS.find(g => g.label === groupQuery) || null;
+      setActiveGroup(group);
+      setCat('All');
+    } else {
+      setActiveGroup(null);
+      const next = routeCategory ? (categoryFromSlug(routeCategory) || 'All') : categoryQuery || 'All';
+      setCat(next);
+    }
     setPage(1);
-  }, [routeCategory, categoryQuery]);
+  }, [routeCategory, categoryQuery, groupQuery]);
 
-  // Sync search/sort into URL params
+  // Sync search/sort into URL params (preserve group if active)
   useEffect(() => {
     const params = {};
     if (search) params.search = search;
     if (sort !== 'featured') params.sort = sort;
+    if (groupQuery) params.group = groupQuery;
     setSearchParams(params, { replace: true });
   }, [search, sort]);
 
   useEffect(() => {
-    document.title = cat === 'All' ? 'Shop – Ace Nursing' : `${cat} – Shop | Ace Nursing`;
-  }, [cat]);
+    const label = activeGroup ? activeGroup.label : cat === 'All' ? 'All' : cat;
+    document.title = label === 'All' ? 'Shop – Ace Nursing' : `${label} – Shop | Ace Nursing`;
+  }, [cat, activeGroup]);
 
   const catSlug = cat !== 'All' ? slugifyCategory(cat) : '';
   useSEO({
@@ -76,7 +89,12 @@ export default function ShopPage() {
       setLoading(true);
       try {
         const params = { page, limit: 12, sort };
-        if (cat !== 'All') params.category = cat;
+        if (activeGroup) {
+          // fetch all categories in the group — send as comma-separated or multiple params
+          params.category = activeGroup.items.join(',');
+        } else if (cat !== 'All') {
+          params.category = cat;
+        }
         if (search.trim()) params.search = search.trim();
         const res = await productAPI.getAll(params);
         if (!cancelled) {
@@ -90,7 +108,7 @@ export default function ShopPage() {
       }
     }, delay);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [cat, sort, search, page]);
+  }, [cat, sort, search, page, activeGroup]);
 
   const handleCat = (c) => {
     const slug = slugFromCategory(c);
@@ -106,7 +124,7 @@ export default function ShopPage() {
       <div style={{ background: 'var(--navy)', padding: '40px 0 36px' }}>
         <div className="container">
           <h1 className="serif" style={{ color: '#fff', fontSize: 40, marginBottom: 6 }}>
-            {cat === 'All' ? 'Study Materials Shop' : `${cat} Shop`}
+            {activeGroup ? activeGroup.label : cat === 'All' ? 'Study Materials Shop' : `${cat} Shop`}
           </h1>
           <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 15 }}>
             {loading ? '…' : `${total} materials available`}
@@ -143,24 +161,47 @@ export default function ShopPage() {
         {/* Category pills — grouped */}
         <div style={{ marginBottom: 28 }}>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-            <button onClick={() => handleCat('All')}
-              style={{ padding: '6px 16px', borderRadius: 50, fontSize: 13, fontWeight: cat === 'All' ? 700 : 400, background: cat === 'All' ? 'var(--navy)' : '#fff', color: cat === 'All' ? '#fff' : 'var(--muted)', border: `1.5px solid ${cat === 'All' ? 'var(--navy)' : 'var(--border)'}`, cursor: 'pointer' }}>
+            <button onClick={() => { setActiveGroup(null); handleCat('All'); }}
+              style={{ padding: '6px 16px', borderRadius: 50, fontSize: 13, fontWeight: !activeGroup && cat === 'All' ? 700 : 400, background: !activeGroup && cat === 'All' ? 'var(--navy)' : '#fff', color: !activeGroup && cat === 'All' ? '#fff' : 'var(--muted)', border: `1.5px solid ${!activeGroup && cat === 'All' ? 'var(--navy)' : 'var(--border)'}`, cursor: 'pointer' }}>
               All
             </button>
+            {CATEGORY_GROUPS.map(group => (
+              <button key={group.label}
+                onClick={() => navigate(`/shop?group=${encodeURIComponent(group.label)}`)}
+                style={{ padding: '6px 16px', borderRadius: 50, fontSize: 13, fontWeight: activeGroup?.label === group.label ? 700 : 400, background: activeGroup?.label === group.label ? 'var(--primary)' : '#fff', color: activeGroup?.label === group.label ? '#fff' : 'var(--muted)', border: `1.5px solid ${activeGroup?.label === group.label ? 'var(--primary)' : 'var(--border)'}`, cursor: 'pointer', transition: 'all 0.2s' }}>
+                {group.label}
+              </button>
+            ))}
           </div>
-          {CATEGORY_GROUPS.map(group => (
-            <div key={group.label} style={{ marginBottom: 10 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>{group.label}</p>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {group.items.map(c => (
-                  <button key={c} onClick={() => handleCat(c)}
-                    style={{ padding: '6px 16px', borderRadius: 50, fontSize: 13, fontWeight: cat === c ? 700 : 400, background: cat === c ? 'var(--navy)' : '#fff', color: cat === c ? '#fff' : 'var(--muted)', border: `1.5px solid ${cat === c ? 'var(--navy)' : 'var(--border)'}`, cursor: 'pointer', transition: 'all 0.2s' }}>
-                    {c}
-                  </button>
-                ))}
-              </div>
+
+          {/* When a group is active, show its individual category pills */}
+          {activeGroup && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+              {activeGroup.items.map(c => (
+                <button key={c} onClick={() => handleCat(c)}
+                  style={{ padding: '5px 14px', borderRadius: 50, fontSize: 12, fontWeight: cat === c ? 700 : 400, background: cat === c ? 'var(--navy)' : 'var(--gray)', color: cat === c ? '#fff' : 'var(--text)', border: `1.5px solid ${cat === c ? 'var(--navy)' : 'var(--border)'}`, cursor: 'pointer', transition: 'all 0.2s' }}>
+                  {c}
+                </button>
+              ))}
             </div>
-          ))}
+          )}
+
+          {/* When no group active, show all groups expanded */}
+          {!activeGroup && (
+            CATEGORY_GROUPS.map(group => (
+              <div key={group.label} style={{ marginBottom: 10 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>{group.label}</p>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {group.items.map(c => (
+                    <button key={c} onClick={() => handleCat(c)}
+                      style={{ padding: '6px 16px', borderRadius: 50, fontSize: 13, fontWeight: cat === c ? 700 : 400, background: cat === c ? 'var(--navy)' : '#fff', color: cat === c ? '#fff' : 'var(--muted)', border: `1.5px solid ${cat === c ? 'var(--navy)' : 'var(--border)'}`, cursor: 'pointer', transition: 'all 0.2s' }}>
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
         {/* Grid */}

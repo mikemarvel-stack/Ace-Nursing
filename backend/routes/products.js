@@ -30,7 +30,10 @@ router.get('/', optionalAuth, asyncHandler(async (req, res) => {
   } = req.query;
 
   const filter = { isActive: true };
-  if (category && category !== 'All') filter.category = category;
+  if (category && category !== 'All') {
+    const cats = category.split(',').map(c => c.trim()).filter(Boolean);
+    filter.category = cats.length === 1 ? cats[0] : { $in: cats };
+  }
   if (featured === 'true') filter.featured = true;
   if (minPrice || maxPrice) {
     filter.price = {};
