@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore, useCartStore } from '../store';
 import { notificationsAPI } from '../api';
@@ -8,7 +8,6 @@ import { CATEGORY_GROUPS } from '../categories';
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
-
   const { isAuthenticated, user, logout, isAdmin } = useAuthStore();
   const { items, openCart } = useCartStore();
 
@@ -33,10 +32,9 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handler);
   }, [materialsOpen]);
 
-  // Poll notifications
+  // Poll user notifications every 60s when logged in
   useEffect(() => {
     if (!isAuthenticated) return;
-
     const load = () => {
       notificationsAPI
         .getMine()
@@ -46,7 +44,6 @@ export default function Navbar() {
         })
         .catch(() => {});
     };
-
     load();
     const id = setInterval(load, 60000);
     return () => clearInterval(id);
@@ -102,32 +99,18 @@ export default function Navbar() {
   };
 
   const linkStyle = (path) => ({
-    color:
-      location.pathname === path
-        ? 'var(--primaryL)'
-        : 'rgba(255,255,255,0.85)',
+    color: location.pathname === path ? 'var(--primaryL)' : 'rgba(255,255,255,0.85)',
     fontWeight: location.pathname === path ? 600 : 400,
     fontSize: 14,
     padding: '4px 0',
-    borderBottom:
-      location.pathname === path
-        ? '2px solid var(--primaryL)'
-        : '2px solid transparent',
+    borderBottom: location.pathname === path ? '2px solid var(--primaryL)' : '2px solid transparent',
     transition: 'all 0.2s',
     cursor: 'pointer',
   });
 
   return (
     <nav style={navStyle}>
-      <div
-        className="container"
-        style={{
-          height: 66,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
+      <div className="container" style={{ height: 66, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         {/* Logo */}
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div
@@ -147,34 +130,18 @@ export default function Navbar() {
           <div>
             <span
               className="serif"
-              style={{
-                color: '#fff',
-                fontSize: 22,
-                fontWeight: 700,
-                letterSpacing: -0.3,
-                lineHeight: 1,
-              }}
+              style={{ color: '#fff', fontSize: 22, fontWeight: 700, letterSpacing: -0.3, lineHeight: 1 }}
             >
               Ace<span style={{ color: 'var(--primaryL)' }}>Nursing</span>
             </span>
-            <div
-              style={{
-                fontSize: 10,
-                color: 'rgba(255,255,255,0.7)',
-                fontWeight: 500,
-                marginTop: -2,
-              }}
-            >
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', fontWeight: 500, marginTop: -2 }}>
               Nursing Study Materials
             </div>
           </div>
         </Link>
 
         {/* Desktop Nav */}
-        <div
-          className="hide-mobile"
-          style={{ display: 'flex', alignItems: 'center', gap: 32 }}
-        >
+        <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
           {/* Search Bar */}
           <div style={{ position: 'relative', width: 280 }}>
             <input
@@ -191,12 +158,8 @@ export default function Navbar() {
                 outline: 'none',
                 transition: 'all 0.2s',
               }}
-              onFocus={(e) =>
-                (e.currentTarget.style.borderColor = 'rgba(96,165,250,0.5)')
-              }
-              onBlur={(e) =>
-                (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)')
-              }
+              onFocus={(e) => (e.currentTarget.style.borderColor = 'rgba(96,165,250,0.5)')}
+              onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)')}
             />
             <div
               style={{
@@ -212,7 +175,6 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Links */}
           <Link to="/" style={linkStyle('/')}>
             Home
           </Link>
@@ -220,16 +182,14 @@ export default function Navbar() {
             Custom Orders
           </Link>
 
-          {/* Materials Dropdown */}
+          {/* Materials dropdown */}
           <div ref={materialsRef} style={{ position: 'relative' }}>
             <button
               onClick={() => setMaterialsOpen((v) => !v)}
               style={{
                 background: 'none',
                 border: 'none',
-                color: location.pathname.startsWith('/shop')
-                  ? 'var(--primaryL)'
-                  : 'rgba(255,255,255,0.85)',
+                color: location.pathname.startsWith('/shop') ? 'var(--primaryL)' : 'rgba(255,255,255,0.85)',
                 fontWeight: location.pathname.startsWith('/shop') ? 600 : 400,
                 fontSize: 14,
                 cursor: 'pointer',
@@ -238,7 +198,6 @@ export default function Navbar() {
             >
               Materials ▾
             </button>
-
             {materialsOpen && (
               <div
                 style={{
@@ -281,9 +240,7 @@ export default function Navbar() {
                         textAlign: 'left',
                         padding: '9px 12px',
                         background:
-                          location.pathname === item.path
-                            ? 'rgba(255,255,255,0.14)'
-                            : 'transparent',
+                          location.pathname === item.path ? 'rgba(255,255,255,0.14)' : 'transparent',
                         border: 'none',
                         color: 'rgba(255,255,255,0.9)',
                         fontSize: 13,
@@ -291,14 +248,10 @@ export default function Navbar() {
                         borderRadius: 10,
                         transition: 'background 0.15s',
                       }}
-                      onMouseOver={(e) =>
-                        (e.currentTarget.style.background = 'rgba(255,255,255,0.14)')
-                      }
+                      onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.14)')}
                       onMouseOut={(e) =>
                         (e.currentTarget.style.background =
-                          location.pathname === item.path
-                            ? 'rgba(255,255,255,0.14)'
-                            : 'transparent')
+                          location.pathname === item.path ? 'rgba(255,255,255,0.14)' : 'transparent')
                       }
                     >
                       {item.label}
@@ -318,7 +271,7 @@ export default function Navbar() {
 
         {/* Right Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* Notification Bell */}
+          {/* Notifications */}
           {isAuthenticated && (
             <div className="hide-mobile" style={{ position: 'relative' }}>
               <button
@@ -340,12 +293,8 @@ export default function Navbar() {
                   justifyContent: 'center',
                   transition: 'all 0.2s',
                 }}
-                onMouseOver={(e) =>
-                  (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')
-                }
-                onMouseOut={(e) =>
-                  (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')
-                }
+                onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}
+                onMouseOut={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
                 title="Notifications"
               >
                 🔔
@@ -372,7 +321,6 @@ export default function Navbar() {
                 )}
               </button>
 
-              {/* Notification Dropdown */}
               {notifOpen && (
                 <div
                   className="animate-fade-in"
@@ -390,6 +338,7 @@ export default function Navbar() {
                     zIndex: 200,
                   }}
                 >
+                  {/* Notifications Header */}
                   <div
                     style={{
                       display: 'flex',
@@ -399,9 +348,7 @@ export default function Navbar() {
                       borderBottom: '1px solid var(--border)',
                     }}
                   >
-                    <span
-                      style={{ fontWeight: 700, fontSize: 14, color: 'var(--navy)' }}
-                    >
+                    <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--navy)' }}>
                       Notifications
                     </span>
                     {notifUnread > 0 && (
@@ -430,8 +377,7 @@ export default function Navbar() {
                         fontSize: 13,
                       }}
                     >
-                      <div style={{ fontSize: 32, marginBottom: 8 }}>🔔</div>
-                      No notifications yet
+                      <div style={{ fontSize: 32, marginBottom: 8 }}>🔔</div> No notifications yet
                     </div>
                   ) : (
                     notifs.map((n) => (
@@ -448,20 +394,14 @@ export default function Navbar() {
                           transition: 'background 0.15s',
                         }}
                         onMouseOver={(e) =>
-                          (e.currentTarget.style.background = n.read
-                            ? 'var(--gray)'
-                            : '#E0EDFF')
+                          (e.currentTarget.style.background = n.read ? 'var(--gray)' : '#E0EDFF')
                         }
                         onMouseOut={(e) =>
                           (e.currentTarget.style.background = n.read ? '#fff' : '#F0F6FF')
                         }
                       >
                         <div style={{ fontSize: 20, flexShrink: 0, marginTop: 1 }}>
-                          {n.type === 'new_order'
-                            ? '🧾'
-                            : n.type === 'order_status'
-                            ? '🔄'
-                            : '🔔'}
+                          {n.type === 'new_order' ? '🧾' : n.type === 'order_status' ? '🔄' : '🔔'}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <p
@@ -475,13 +415,7 @@ export default function Navbar() {
                           >
                             {n.title}
                           </p>
-                          <p
-                            style={{
-                              fontSize: 12,
-                              color: 'var(--muted)',
-                              lineHeight: 1.4,
-                            }}
-                          >
+                          <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.4 }}>
                             {n.message}
                           </p>
                           <p
@@ -514,7 +448,7 @@ export default function Navbar() {
             </div>
           )}
 
-          {/* Cart */}
+          {/* Cart Button */}
           <button
             onClick={openCart}
             style={{
@@ -530,12 +464,8 @@ export default function Navbar() {
               gap: 6,
               transition: 'all 0.2s',
             }}
-            onMouseOver={(e) =>
-              (e.currentTarget.style.background = 'rgba(196,154,60,0.2)')
-            }
-            onMouseOut={(e) =>
-              (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')
-            }
+            onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(196,154,60,0.2)')}
+            onMouseOut={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
           >
             🛒 <span className="hide-mobile">Cart</span>
             {cartCount > 0 && (
@@ -587,183 +517,229 @@ export default function Navbar() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: 14,
                     fontWeight: 700,
+                    fontSize: 12,
+                    color: '#fff',
                   }}
                 >
-                  {user.name[0].toUpperCase()}
+                  {user?.firstName?.[0]?.toUpperCase() || '?'}
                 </div>
-                {user.name}
+                {user?.firstName || 'User'}
               </button>
 
               {userMenuOpen && (
                 <div
+                  className="animate-fade-in"
                   style={{
                     position: 'absolute',
-                    top: 'calc(100% + 6px)',
                     right: 0,
+                    top: 'calc(100% + 8px)',
                     background: '#fff',
                     border: '1px solid var(--border)',
-                    borderRadius: 14,
-                    boxShadow: 'var(--shadow-lg)',
+                    borderRadius: 12,
+                    padding: '8px 0',
                     minWidth: 180,
-                    zIndex: 40,
+                    boxShadow: 'var(--shadow-lg)',
+                    zIndex: 100,
                   }}
                 >
+                  {[
+                    { label: '👤 My Account', path: '/account' },
+                    ...(isAdmin() ? [{ label: '⚙️ Admin Panel', path: '/admin' }] : []),
+                  ].map((item) => (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      style={{
+                        display: 'block',
+                        padding: '10px 16px',
+                        fontSize: 14,
+                        color: 'var(--text)',
+                        transition: 'background 0.15s',
+                      }}
+                      onMouseOver={(e) => (e.currentTarget.style.background = 'var(--gray)')}
+                      onMouseOut={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+
+                  <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
                   <button
                     onClick={handleLogout}
                     style={{
                       width: '100%',
-                      padding: '12px 16px',
                       textAlign: 'left',
+                      padding: '10px 16px',
                       fontSize: 14,
-                      background: 'transparent',
+                      color: 'var(--error)',
+                      background: 'none',
                       border: 'none',
                       cursor: 'pointer',
                     }}
                   >
-                    Logout
+                    🚪 Log Out
                   </button>
                 </div>
               )}
             </div>
           ) : (
-            <div className="hide-mobile">
+            <div className="hide-mobile" style={{ display: 'flex', gap: 8 }}>
               <Link
                 to="/login"
                 style={{
-                  padding: '6px 14px',
+                  color: 'rgba(255,255,255,0.8)',
+                  fontSize: 14,
+                  padding: '8px 14px',
+                  borderRadius: 9,
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  transition: 'all 0.2s',
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)')}
+                onMouseOut={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)')}
+              >
+                Log in
+              </Link>
+              <Link
+                to="/register"
+                style={{
                   background: 'var(--primary)',
-                  borderRadius: 10,
                   color: '#fff',
                   fontSize: 14,
+                  padding: '8px 16px',
+                  borderRadius: 9,
                   fontWeight: 600,
+                  transition: 'background 0.2s',
                 }}
+                onMouseOver={(e) => (e.currentTarget.style.background = 'var(--primaryL)')}
+                onMouseOut={(e) => (e.currentTarget.style.background = 'var(--primary)')}
               >
-                Login
+                Sign Up
               </Link>
             </div>
           )}
-        </div>
 
-        {/* Hamburger (mobile only) */}
-        <button
-          className="show-mobile"
-          onClick={() => setMenuOpen((v) => !v)}
-          style={{
-            background: 'rgba(255,255,255,0.08)',
-            border: '1px solid rgba(255,255,255,0.15)',
-            color: '#fff',
-            width: 38,
-            height: 38,
-            borderRadius: 9,
-            fontSize: 20,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}
-        >
-          {menuOpen ? '✕' : '☰'}
-        </button>
+          {/* Hamburger */}
+          <button
+            className="show-mobile"
+            onClick={() => setMenuOpen((v) => !v)}
+            style={{
+              background: 'rgba(255,255,255,0.08)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              color: '#fff',
+              width: 38,
+              height: 38,
+              borderRadius: 9,
+              fontSize: 20,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            {menuOpen ? '✕' : '☰'}
+          </button>
+        </div>
       </div>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Menu */}
       {menuOpen && (
-        <div
-          style={{
-            background: '#0C1B33',
-            borderTop: '1px solid rgba(255,255,255,0.08)',
-            padding: '16px 20px 24px',
-          }}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {[{ label: '🏠 Home', path: '/' }].map((item) => (
+        <div className="animate-fade-in" style={{ background: '#0C1B33', borderTop: '1px solid rgba(255,255,255,0.08)', padding: '16px 20px 24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {/* Auth row */}
+            {isAuthenticated ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0 14px', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div
+                    style={{
+                      width: 32,
+                      height: 32,
+                      background: 'var(--primary)',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 700,
+                      fontSize: 14,
+                      color: '#fff',
+                    }}
+                  >
+                    {user?.firstName?.[0]?.toUpperCase() || '?'}
+                  </div>
+                  <div>
+                    <div style={{ color: '#fff', fontWeight: 600, fontSize: 14 }}>
+                      {user?.firstName} {user?.lastName}
+                    </div>
+                    <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{user?.email}</div>
+                  </div>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    background: 'rgba(220,38,38,0.15)',
+                    border: '1px solid rgba(220,38,38,0.3)',
+                    color: '#F87171',
+                    padding: '6px 12px',
+                    borderRadius: 8,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Log Out
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 10, padding: '4px 0 16px', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: 4 }}>
+                <Link
+                  to="/login"
+                  style={{
+                    flex: 1,
+                    textAlign: 'center',
+                    color: '#fff',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    padding: '10px',
+                    borderRadius: 9,
+                    border: '1px solid rgba(255,255,255,0.25)',
+                    background: 'rgba(255,255,255,0.06)',
+                  }}
+                >
+                  Log In
+                </Link>
+                <Link
+                  to="/register"
+                  style={{
+                    flex: 1,
+                    textAlign: 'center',
+                    background: 'var(--primary)',
+                    color: '#fff',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    padding: '10px',
+                    borderRadius: 9,
+                  }}
+                >
+                  Sign Up
+                </Link>
+              </div>
+            )}
+
+            {[{ label: '🏠 Home', path: '/' }, { label: '🛍️ All Materials', path: '/shop' }, { label: '📝 Custom Orders', path: '/custom-order' }, ...CATEGORY_GROUPS.map((g) => ({ label: `📂 ${g.label}`, path: `/shop?group=${encodeURIComponent(g.label)}` })), ...(isAuthenticated ? [{ label: '👤 My Account', path: '/account' }] : []), ...(isAdmin() ? [{ label: '⚙️ Admin Panel', path: '/admin' }] : [])].map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
                 style={{
-                  color:
-                    location.pathname === item.path
-                      ? '#C49A3C'
-                      : 'rgba(255,255,255,0.85)',
+                  color: location.pathname === item.path ? '#C49A3C' : 'rgba(255,255,255,0.85)',
+                  fontSize: 15,
+                  fontWeight: location.pathname === item.path ? 700 : 400,
                   padding: '12px 0',
+                  borderBottom: '1px solid rgba(255,255,255,0.06)',
                   display: 'block',
                 }}
               >
                 {item.label}
               </Link>
             ))}
-
-            {/* Materials */}
-            <button
-              onClick={() => setMaterialsOpen((v) => !v)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#fff',
-                textAlign: 'left',
-                fontSize: 14,
-                padding: '12px 0',
-                cursor: 'pointer',
-              }}
-            >
-              📂 Materials ▾
-            </button>
-            {materialsOpen &&
-              MATERIALS.map((m) => (
-                <Link
-                  key={m.path}
-                  to={m.path}
-                  onClick={() => setMenuOpen(false)}
-                  style={{
-                    padding: '8px 0 8px 12px',
-                    display: 'block',
-                    color:
-                      location.pathname === m.path
-                        ? '#C49A3C'
-                        : 'rgba(255,255,255,0.85)',
-                  }}
-                >
-                  {m.label}
-                </Link>
-              ))}
-
-            {/* Auth */}
-            {isAuthenticated ? (
-              <button
-                onClick={handleLogout}
-                style={{
-                  marginTop: 12,
-                  padding: '10px 16px',
-                  background: 'var(--primary)',
-                  borderRadius: 8,
-                  color: '#fff',
-                  fontWeight: 600,
-                  width: '100%',
-                  border: 'none',
-                }}
-              >
-                Logout
-              </button>
-            ) : (
-              <Link
-                to="/login"
-                onClick={() => setMenuOpen(false)}
-                style={{
-                  marginTop: 12,
-                  display: 'block',
-                  padding: '10px 16px',
-                  background: 'var(--primary)',
-                  borderRadius: 8,
-                  color: '#fff',
-                  fontWeight: 600,
-                  textAlign: 'center',
-                }}
-              >
-                Login
-              </Link>
-            )}
           </div>
         </div>
       )}
