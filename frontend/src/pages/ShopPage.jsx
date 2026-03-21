@@ -3,16 +3,11 @@ import { useSearchParams, useParams, useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { productAPI } from '../api';
 import useSEO from '../hooks/useSEO';
-import { CATEGORIES, CATEGORY_GROUPS, slugifyCategory, categoryFromSlug } from '../categories';
+import { CATEGORY_GROUPS, slugifyCategory, categoryFromSlug } from '../categories';
 
 const SITE_URL = 'https://acenursing.com';
 
-const CATS = ['All', ...CATEGORIES];
-
-const slugFromCategory = (category) => {
-  if (!category || category === 'All') return '';
-  return slugifyCategory(category);
-};
+const slugFromCategory = (c) => (!c || c === 'All') ? '' : slugifyCategory(c);
 
 const SORT_OPTIONS = [
   { value: 'featured', label: 'Featured' },
@@ -118,134 +113,146 @@ export default function ShopPage() {
     setPage(1);
   };
 
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const activeLabel = activeGroup ? activeGroup.label : cat !== 'All' ? cat : null;
+
+  const CategorySidebar = ({ onClose }) => (
+    <div>
+      {onClose && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--navy)' }}>Browse Categories</span>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, color: 'var(--muted)', cursor: 'pointer', lineHeight: 1 }}>✕</button>
+        </div>
+      )}
+      {!onClose && <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 14 }}>Categories</p>}
+
+      <button
+        onClick={() => { setActiveGroup(null); handleCat('All'); onClose?.(); }}
+        style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', borderRadius: 8, fontSize: 14, fontWeight: !activeGroup && cat === 'All' ? 700 : 400, background: !activeGroup && cat === 'All' ? 'var(--navy)' : 'transparent', color: !activeGroup && cat === 'All' ? '#fff' : 'var(--text)', border: 'none', cursor: 'pointer', marginBottom: 4 }}>
+        All Materials
+      </button>
+
+      {CATEGORY_GROUPS.map(group => (
+        <div key={group.label} style={{ marginBottom: 16 }}>
+          <button
+            onClick={() => { navigate(`/shop?group=${encodeURIComponent(group.label)}`); onClose?.(); }}
+            style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', borderRadius: 8, fontSize: 13, fontWeight: activeGroup?.label === group.label && cat === 'All' ? 700 : 600, background: activeGroup?.label === group.label && cat === 'All' ? 'var(--primary)' : 'transparent', color: activeGroup?.label === group.label && cat === 'All' ? '#fff' : 'var(--primary)', border: 'none', cursor: 'pointer', marginBottom: 2 }}>
+            {group.label}
+          </button>
+          {group.items.map(c => (
+            <button key={c}
+              onClick={() => { handleCat(c); onClose?.(); }}
+              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px 7px 22px', borderRadius: 8, fontSize: 13, fontWeight: cat === c ? 600 : 400, background: cat === c ? '#EFF6FF' : 'transparent', color: cat === c ? 'var(--primary)' : 'var(--muted)', border: 'none', cursor: 'pointer' }}>
+              {c}
+            </button>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div style={{ background: 'var(--cream)', minHeight: '80vh' }}>
+
+      {/* Mobile filter sidebar overlay */}
+      {sidebarOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 800, display: 'flex' }}>
+          <div onClick={() => setSidebarOpen(false)} style={{ flex: 1, background: 'rgba(0,0,0,0.45)' }} />
+          <div className="animate-slide-inR" style={{ width: 280, background: '#fff', height: '100%', overflowY: 'auto', padding: '20px 16px', boxShadow: '-4px 0 24px rgba(0,0,0,0.15)' }}>
+            <CategorySidebar onClose={() => setSidebarOpen(false)} />
+          </div>
+        </div>
+      )}
+
       {/* Shop Header */}
-      <div style={{ background: 'var(--navy)', padding: '40px 0 36px' }}>
+      <div style={{ background: 'var(--navy)', padding: '36px 0 30px' }}>
         <div className="container">
-          <h1 className="serif" style={{ color: '#fff', fontSize: 40, marginBottom: 6 }}>
-            {activeGroup ? activeGroup.label : cat === 'All' ? 'Study Materials Shop' : `${cat} Shop`}
+          <h1 className="serif" style={{ color: '#fff', fontSize: 36, marginBottom: 4 }}>
+            {activeGroup ? activeGroup.label : cat === 'All' ? 'Study Materials Shop' : cat}
           </h1>
-          <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 15 }}>
+          <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14 }}>
             {loading ? '…' : `${total} materials available`}
           </p>
         </div>
       </div>
 
-      <div className="container" style={{ paddingTop: 36, paddingBottom: 60 }}>
-        {/* Filters bar */}
-        <div style={{ display: 'flex', gap: 10, marginBottom: 28, flexWrap: 'wrap', alignItems: 'center' }}>
-          {/* Search */}
-          <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
-            <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 16, pointerEvents: 'none' }}>🔍</span>
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search materials…" className="input"
-              style={{ paddingLeft: 42 }} />
+      <div className="container" style={{ paddingTop: 28, paddingBottom: 60 }}>
+
+        {/* Top bar: search + sort + mobile filter button */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 24, alignItems: 'center' }}>
+          <div style={{ position: 'relative', flex: 1 }}>
+            <span style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', fontSize: 15, pointerEvents: 'none', color: 'var(--muted)' }}>🔍</span>
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search materials…" className="input" style={{ paddingLeft: 40 }} />
           </div>
-
-          {/* Category */}
-          <select value={cat} onChange={e => handleCat(e.target.value)} className="input" style={{ width: 'auto', minWidth: 200 }}>
-            <option value="All">All Categories</option>
-            {CATEGORY_GROUPS.map(group => (
-              <optgroup key={group.label} label={group.label}>
-                {group.items.map(c => <option key={c} value={c}>{c}</option>)}
-              </optgroup>
-            ))}
-          </select>
-
-          {/* Sort */}
-          <select value={sort} onChange={e => setSort(e.target.value)} className="input" style={{ width: 'auto', minWidth: 180 }}>
+          <select value={sort} onChange={e => setSort(e.target.value)} className="input" style={{ width: 'auto', minWidth: 160, flexShrink: 0 }}>
             {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
+          {/* Mobile: filter button */}
+          <button className="show-mobile" onClick={() => setSidebarOpen(true)}
+            style={{ flexShrink: 0, padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--border)', background: activeLabel ? 'var(--navy)' : '#fff', color: activeLabel ? '#fff' : 'var(--text)', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+            ☰ {activeLabel ? 'Filtered' : 'Filter'}
+          </button>
         </div>
 
-        {/* Category pills — grouped */}
-        <div style={{ marginBottom: 28 }}>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-            <button onClick={() => { setActiveGroup(null); handleCat('All'); }}
-              style={{ padding: '6px 16px', borderRadius: 50, fontSize: 13, fontWeight: !activeGroup && cat === 'All' ? 700 : 400, background: !activeGroup && cat === 'All' ? 'var(--navy)' : '#fff', color: !activeGroup && cat === 'All' ? '#fff' : 'var(--muted)', border: `1.5px solid ${!activeGroup && cat === 'All' ? 'var(--navy)' : 'var(--border)'}`, cursor: 'pointer' }}>
-              All
-            </button>
-            {CATEGORY_GROUPS.map(group => (
-              <button key={group.label}
-                onClick={() => navigate(`/shop?group=${encodeURIComponent(group.label)}`)}
-                style={{ padding: '6px 16px', borderRadius: 50, fontSize: 13, fontWeight: activeGroup?.label === group.label ? 700 : 400, background: activeGroup?.label === group.label ? 'var(--primary)' : '#fff', color: activeGroup?.label === group.label ? '#fff' : 'var(--muted)', border: `1.5px solid ${activeGroup?.label === group.label ? 'var(--primary)' : 'var(--border)'}`, cursor: 'pointer', transition: 'all 0.2s' }}>
-                {group.label}
-              </button>
-            ))}
+        {/* Desktop layout: sidebar + grid */}
+        <div style={{ display: 'flex', gap: 28, alignItems: 'flex-start' }}>
+
+          {/* Desktop sidebar */}
+          <div className="hide-mobile" style={{ width: 220, flexShrink: 0, background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 14px', position: 'sticky', top: 86 }}>
+            <CategorySidebar />
           </div>
 
-          {/* When a group is active, show its individual category pills */}
-          {activeGroup && (
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingTop: 8, borderTop: '1px solid var(--border)' }}>
-              {activeGroup.items.map(c => (
-                <button key={c} onClick={() => handleCat(c)}
-                  style={{ padding: '5px 14px', borderRadius: 50, fontSize: 12, fontWeight: cat === c ? 700 : 400, background: cat === c ? 'var(--navy)' : 'var(--gray)', color: cat === c ? '#fff' : 'var(--text)', border: `1.5px solid ${cat === c ? 'var(--navy)' : 'var(--border)'}`, cursor: 'pointer', transition: 'all 0.2s' }}>
-                  {c}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* When no group active, show all groups expanded */}
-          {!activeGroup && (
-            CATEGORY_GROUPS.map(group => (
-              <div key={group.label} style={{ marginBottom: 10 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>{group.label}</p>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {group.items.map(c => (
-                    <button key={c} onClick={() => handleCat(c)}
-                      style={{ padding: '6px 16px', borderRadius: 50, fontSize: 13, fontWeight: cat === c ? 700 : 400, background: cat === c ? 'var(--navy)' : '#fff', color: cat === c ? '#fff' : 'var(--muted)', border: `1.5px solid ${cat === c ? 'var(--navy)' : 'var(--border)'}`, cursor: 'pointer', transition: 'all 0.2s' }}>
-                      {c}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Grid */}
-        {loading ? (
-          <div className="product-grid">
-            {[...Array(12)].map((_, i) => (
-              <div key={i} className="card" style={{ height: 340 }}>
-                <div className="skeleton" style={{ height: 148, borderRadius: 0 }} />
-                <div style={{ padding: 16 }}>
-                  <div className="skeleton" style={{ height: 11, width: '55%', marginBottom: 10 }} />
-                  <div className="skeleton" style={{ height: 15, marginBottom: 8 }} />
-                  <div className="skeleton" style={{ height: 15, width: '80%', marginBottom: 20 }} />
-                  <div className="skeleton" style={{ height: 34 }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : products.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '80px 0' }}>
-            <div style={{ fontSize: 60, marginBottom: 16 }}>🔍</div>
-            <h3 style={{ color: 'var(--navy)', fontSize: 22, marginBottom: 8 }}>No materials found</h3>
-            <p style={{ color: 'var(--muted)', marginBottom: 20 }}>Try a different search term or category</p>
-            <button className="btn btn-primary" onClick={() => { setSearch(''); setCat('All'); }}>
-              Clear Filters
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="product-grid">
-              {products.map(p => <ProductCard key={p._id} product={p} />)}
-            </div>
-
-            {/* Pagination */}
-            {total > 12 && (
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 40 }}>
-                <button className="btn btn-outline btn-sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>← Prev</button>
-                <span style={{ display: 'flex', alignItems: 'center', fontSize: 14, color: 'var(--muted)', padding: '0 12px' }}>
-                  Page {page} of {Math.ceil(total / 12)}
+          {/* Product grid */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Active filter badge */}
+            {activeLabel && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                <span style={{ fontSize: 13, color: 'var(--muted)' }}>Showing:</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--navy)', color: '#fff', fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 20 }}>
+                  {activeLabel}
+                  <button onClick={() => { setActiveGroup(null); handleCat('All'); }} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', fontSize: 14, cursor: 'pointer', lineHeight: 1, padding: 0 }}>✕</button>
                 </span>
-                <button className="btn btn-outline btn-sm" onClick={() => setPage(p => p + 1)} disabled={page >= Math.ceil(total / 12)}>Next →</button>
               </div>
             )}
-          </>
-        )}
+
+            {loading ? (
+              <div className="product-grid">
+                {[...Array(12)].map((_, i) => (
+                  <div key={i} className="card" style={{ height: 320 }}>
+                    <div className="skeleton" style={{ height: 140, borderRadius: 0 }} />
+                    <div style={{ padding: 14 }}>
+                      <div className="skeleton" style={{ height: 10, width: '50%', marginBottom: 8 }} />
+                      <div className="skeleton" style={{ height: 14, marginBottom: 6 }} />
+                      <div className="skeleton" style={{ height: 14, width: '75%', marginBottom: 18 }} />
+                      <div className="skeleton" style={{ height: 32 }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : products.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '80px 0' }}>
+                <div style={{ fontSize: 56, marginBottom: 14 }}>🔍</div>
+                <h3 style={{ color: 'var(--navy)', fontSize: 20, marginBottom: 8 }}>No materials found</h3>
+                <p style={{ color: 'var(--muted)', marginBottom: 20 }}>Try a different search term or category</p>
+                <button className="btn btn-primary" onClick={() => { setSearch(''); setActiveGroup(null); handleCat('All'); }}>Clear Filters</button>
+              </div>
+            ) : (
+              <>
+                <div className="product-grid">
+                  {products.map(p => <ProductCard key={p._id} product={p} />)}
+                </div>
+                {total > 12 && (
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 40 }}>
+                    <button className="btn btn-outline btn-sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>← Prev</button>
+                    <span style={{ display: 'flex', alignItems: 'center', fontSize: 14, color: 'var(--muted)', padding: '0 12px' }}>Page {page} of {Math.ceil(total / 12)}</span>
+                    <button className="btn btn-outline btn-sm" onClick={() => setPage(p => p + 1)} disabled={page >= Math.ceil(total / 12)}>Next →</button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
