@@ -583,4 +583,190 @@ export default function Navbar() {
                     width: 26,
                     height: 26,
                     background: 'var(--primary)',
-                    borderRadius
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 14,
+                    fontWeight: 700,
+                  }}
+                >
+                  {user.name[0].toUpperCase()}
+                </div>
+                {user.name}
+              </button>
+
+              {userMenuOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 6px)',
+                    right: 0,
+                    background: '#fff',
+                    border: '1px solid var(--border)',
+                    borderRadius: 14,
+                    boxShadow: 'var(--shadow-lg)',
+                    minWidth: 180,
+                    zIndex: 40,
+                  }}
+                >
+                  <button
+                    onClick={handleLogout}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      textAlign: 'left',
+                      fontSize: 14,
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="hide-mobile">
+              <Link
+                to="/login"
+                style={{
+                  padding: '6px 14px',
+                  background: 'var(--primary)',
+                  borderRadius: 10,
+                  color: '#fff',
+                  fontSize: 14,
+                  fontWeight: 600,
+                }}
+              >
+                Login
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* Hamburger (mobile only) */}
+        <button
+          className="show-mobile"
+          onClick={() => setMenuOpen((v) => !v)}
+          style={{
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            color: '#fff',
+            width: 38,
+            height: 38,
+            borderRadius: 9,
+            fontSize: 20,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          {menuOpen ? '✕' : '☰'}
+        </button>
+      </div>
+
+      {/* Mobile Drawer */}
+      {menuOpen && (
+        <div
+          style={{
+            background: '#0C1B33',
+            borderTop: '1px solid rgba(255,255,255,0.08)',
+            padding: '16px 20px 24px',
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {[{ label: '🏠 Home', path: '/' }].map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                style={{
+                  color:
+                    location.pathname === item.path
+                      ? '#C49A3C'
+                      : 'rgba(255,255,255,0.85)',
+                  padding: '12px 0',
+                  display: 'block',
+                }}
+              >
+                {item.label}
+              </Link>
+            ))}
+
+            {/* Materials */}
+            <button
+              onClick={() => setMaterialsOpen((v) => !v)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#fff',
+                textAlign: 'left',
+                fontSize: 14,
+                padding: '12px 0',
+                cursor: 'pointer',
+              }}
+            >
+              📂 Materials ▾
+            </button>
+            {materialsOpen &&
+              MATERIALS.map((m) => (
+                <Link
+                  key={m.path}
+                  to={m.path}
+                  onClick={() => setMenuOpen(false)}
+                  style={{
+                    padding: '8px 0 8px 12px',
+                    display: 'block',
+                    color:
+                      location.pathname === m.path
+                        ? '#C49A3C'
+                        : 'rgba(255,255,255,0.85)',
+                  }}
+                >
+                  {m.label}
+                </Link>
+              ))}
+
+            {/* Auth */}
+            {isAuthenticated ? (
+              <button
+                onClick={handleLogout}
+                style={{
+                  marginTop: 12,
+                  padding: '10px 16px',
+                  background: 'var(--primary)',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontWeight: 600,
+                  width: '100%',
+                  border: 'none',
+                }}
+              >
+                Logout
+              </button>
+            ) : (
+              <Link
+                to="/login"
+                onClick={() => setMenuOpen(false)}
+                style={{
+                  marginTop: 12,
+                  display: 'block',
+                  padding: '10px 16px',
+                  background: 'var(--primary)',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontWeight: 600,
+                  textAlign: 'center',
+                }}
+              >
+                Login
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+    </nav>
+  );
+}
