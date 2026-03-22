@@ -1,5 +1,6 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import Header from './components/Header';
+import ErrorBoundary from './components/ErrorBoundary';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ProductCategoryMenu from './components/ProductCategoryMenu';
@@ -14,7 +15,7 @@ const App = () => {
     location.pathname.startsWith('/page');
 
   return (
-    <>
+    <ErrorBoundary>
       <ToastContainer />
       <Header />
       <main className='py-3'>
@@ -27,7 +28,7 @@ const App = () => {
           </div>
         </div>
       </main>
-    </>
+    </ErrorBoundary>
   );
 };
 

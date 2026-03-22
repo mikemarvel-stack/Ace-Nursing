@@ -62,6 +62,13 @@ const userSchema = new mongoose.Schema(
     ],
     passwordResetToken: String,
     passwordResetExpires: Date,
+    // Account lockout for brute force protection
+    failedLoginAttempts: { type: Number, default: 0 },
+    lockoutUntil: Date,
+    // Email verification
+    emailVerificationToken: String,
+    emailVerificationExpires: Date,
+    emailVerified: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
     lastLogin: Date,
   },
@@ -106,6 +113,82 @@ userSchema.methods.createDownloadToken = function (productId) {
   this.downloadTokens.push({ token, productId, expiresAt });
   return token;
 };
+
+// ─── Account Lockout Methods ─────────────────────────────────────────────────
+userSchema.methods.isLocked = function () {
+  return this.lockoutUntil && this.lockoutUntil > Date.now();
+};
+
+userSchema.methods.incrementFailedAttempts = function () {
+  // If lockout has expired, reset attempts
+  if (this.lockoutUntil && this.lockoutUntil < Date.now()) {
+    return this.resetFailedAttempts();
+  }
+  
+  this.failedLoginAttempts += 1;
+  
+  // Lock account after 5 failed attempts for 15 minutes
+  if (this.failedLoginAttempts >= 5 && !this.isLocked()) {
+    this.lockoutUntil = new Date(Date.now() + 15 * 60 * 1000);
+  }
+};
+
+userSchema.methods.resetFailedAttempts = function () {
+  this.failedLoginAttempts = 0;
+  this.lockoutUntil = undefined;
+};
+
+// ─── Email Verification Methods ──────────────────────────────────────────────
+userSchema.methods.createEmailVerificationToken = function () {
+  const verificationToken = crypto.randomBytes(32).toString('hex');
+  this.emailVerificationToken = crypto
+    .createHash('sha256')
+    .update(verificationToken)
+    .digest('hex');
+  this.emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+  return verificationToken;
+};
+
+userSchema.methods.verifyEmail = function (token) {
+  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+  
+  if (this.emailVerificationToken !== hashedToken) {
+    return false;
+  }
+  
+  if (this.emailVerificationExpires < Date.now()) {
+    return false;
+  }
+  
+  this.emailVerified = true;
+  this.emailVerificationToken = undefined;
+  this.emailVerificationExpires = undefined;
+  return true;
+};
+
+// ─── Indexes ───────────────────────────────────────────────────────────────────
+// TTL index: automatically delete password reset tokens 10 minutes after creation
+userSchema.index(
+  { passwordResetExpires: 1 },
+  {
+    expireAfterSeconds: 0,
+    sparse: true,
+    partialFilterExpression: { passwordResetToken: { $exists: true } }
+  }
+);
+
+// TTL index: automatically clear email verification tokens 24 hours after creation
+userSchema.index(
+  { emailVerificationExpires: 1 },
+  {
+    expireAfterSeconds: 0,
+    sparse: true,
+    partialFilterExpression: { emailVerificationToken: { $exists: true } }
+  }
+);
+
+// Sparse index for lockout expiry checking
+userSchema.index({ lockoutUntil: 1 }, { sparse: true });
 
 // ─── Static Methods ────────────────────────────────────────────────────────────
 userSchema.statics.findByEmail = function (email) {

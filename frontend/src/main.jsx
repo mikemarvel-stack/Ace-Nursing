@@ -29,9 +29,11 @@ const ContactPage       = lazy(() => import('./pages/ContactPage'));
 const FAQPage           = lazy(() => import('./pages/FAQPage'));
 const PolicyPage        = lazy(() => import('./pages/PolicyPage'));
 const CustomOrderPage   = lazy(() => import('./pages/CustomOrderPage'));
+const NotFoundPage      = lazy(() => import('./pages/NotFoundPage'));
 
 // Admin pages — never loaded for regular users
 const AdminDashboard    = lazy(() => import('./pages/admin/AdminDashboard'));
+const AdminCategories   = lazy(() => import('./pages/admin/AdminCategories'));
 const AdminProducts     = lazy(() => import('./pages/admin/AdminProducts'));
 const AdminUpload       = lazy(() => import('./pages/admin/AdminUpload'));
 const AdminOrders       = lazy(() => import('./pages/admin/AdminOrders'));
@@ -142,6 +144,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 }
               >
                 <Route index element={<AdminDashboard />} />
+                <Route path="categories" element={<AdminCategories />} />
                 <Route path="products" element={<AdminProducts />} />
                 <Route path="upload" element={<AdminUpload />} />
                 <Route path="orders" element={<AdminOrders />} />
@@ -149,7 +152,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 <Route path="custom-orders" element={<AdminCustomOrders />} />
               </Route>
 
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>
         </BrowserRouter>

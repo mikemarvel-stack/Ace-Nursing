@@ -18,7 +18,9 @@ exports.protect = async (req, res, next) => {
       return res.status(401).json({ error: 'You are not logged in. Please log in to continue.' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+      algorithms: ['HS256']  // Prevent algorithm confusion attacks
+    });
 
     const user = await User.findById(decoded.id).select('-password');
     if (!user) {
@@ -60,7 +62,9 @@ exports.optionalAuth = async (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
     }
     if (token) {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+        algorithms: ['HS256']  // Prevent algorithm confusion attacks
+      });
       req.user = await User.findById(decoded.id).select('-password');
     }
   } catch {

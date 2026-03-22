@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore, useCartStore } from '../store';
 import { notificationsAPI } from '../api';
 import toast from 'react-hot-toast';
+import { debounce } from '../utils/debounce';
 import { CATEGORY_GROUPS } from '../categories';
 
 export default function Navbar() {
@@ -23,6 +24,22 @@ export default function Navbar() {
   const [notifs, setNotifs] = useState([]);
   const [notifUnread, setNotifUnread] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Debounced search navigation (400ms delay)
+  const debouncedSearch = useMemo(
+    () => debounce((query) => {
+      if (query.trim()) {
+        navigate(`/shop?search=${encodeURIComponent(query)}`);
+      }
+    }, 400),
+    [navigate]
+  );
+
+  const handleSearchChange = (e) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+    debouncedSearch(query);
+  };
 
   // Close all dropdowns on outside click
   useEffect(() => {
@@ -63,10 +80,7 @@ export default function Navbar() {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/shop?search=${encodeURIComponent(searchQuery)}`);
-      setSearchQuery('');
-    }
+    debouncedSearch(searchQuery);
   };
 
   const handleMarkNotifRead = async (n) => {
@@ -198,7 +212,8 @@ export default function Navbar() {
                 type="text"
                 placeholder="Search study materials..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={handleSearchChange}
+                aria-label="Search study materials"
                 style={{
                   width: '100%',
                   padding: '8px 16px 8px 40px',

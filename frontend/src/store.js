@@ -63,11 +63,12 @@ export const useAuthStore = create(
       user: null,
       token: null,
       isAuthenticated: false,
+      lastActivityTime: null,
 
-      setAuth: (user, token) => set({ user, token, isAuthenticated: true }),
+      setAuth: (user, token) => set({ user, token, isAuthenticated: true, lastActivityTime: Date.now() }),
 
       logout: () => {
-        set({ user: null, token: null, isAuthenticated: false });
+        set({ user: null, token: null, isAuthenticated: false, lastActivityTime: null });
         useCartStore.getState().clearCart();
       },
 
@@ -75,10 +76,33 @@ export const useAuthStore = create(
         set({ user: { ...get().user, ...updates } }),
 
       isAdmin: () => get().user?.role === 'admin',
+
+      updateActivity: () => set({ lastActivityTime: Date.now() }),
     }),
     {
       name: 'acenursing-auth',
       partialize: (state) => ({ user: state.user, token: state.token, isAuthenticated: state.isAuthenticated }),
+      // Validate hydrated state to prevent corrupted localStorage from crashing app
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        
+        // Validate essential fields
+        const hasValidToken = state.token && typeof state.token === 'string';
+        const hasValidUser = !state.user || (typeof state.user === 'object' && state.user._id);
+        const isAuthenticated = state.isAuthenticated === true;
+
+        // If state is invalid, reset to defaults
+        if (!hasValidToken && isAuthenticated) {
+          state.isAuthenticated = false;
+          state.token = null;
+          state.user = null;
+        }
+
+        if (!hasValidUser && state.user) {
+          state.user = null;
+          state.isAuthenticated = false;
+        }
+      },
     }
   )
 );

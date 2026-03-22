@@ -1,16 +1,28 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const User = require('../models/User');
 const { protect, restrictTo } = require('../middleware/auth');
 const asyncHandler = require('../utils/asyncHandler');
+const { parsePagination } = require('../utils/validation');
+
+// Rate limiter for admin write operations
+const adminWriteLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  keyGenerator: (req) => req.user?._id?.toString() || req.ip,
+  message: { error: 'Too many write operations. Please slow down.' },
+  skip: (req) => !req.user,
+});
 
 router.use(protect, restrictTo('admin'));
 
 // ─── GET /api/orders ──────────────────────────────────────────────────────────
 router.get('/', asyncHandler(async (req, res) => {
-  const { page = 1, limit = 20, status, search } = req.query;
+  const { page, limit, status, search } = req.query;
+  const { page: pageNum, limit: limitNum, skip } = parsePagination({ page, limit });
   const filter = {};
 
   if (status) filter.status = status;
@@ -22,12 +34,11 @@ router.get('/', asyncHandler(async (req, res) => {
     ];
   }
 
-  const skip = (Number(page) - 1) * Number(limit);
   const [orders, total] = await Promise.all([
     Order.find(filter)
       .sort('-createdAt')
       .skip(skip)
-      .limit(Number(limit))
+      .limit(limitNum)
       .populate('user', 'firstName lastName email')
       .select('-items.downloadToken'),
     Order.countDocuments(filter),
@@ -76,7 +87,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
 }));
 
 // ─── PATCH /api/orders/:id ────────────────────────────────────────────────────
-router.patch('/:id', asyncHandler(async (req, res) => {
+router.patch('/:id', adminWriteLimiter, asyncHandler(async (req, res) => {
   const allowed = ['status', 'notes'];
   const updates = {};
   allowed.forEach(f => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });

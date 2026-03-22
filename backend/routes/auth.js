@@ -4,10 +4,11 @@ const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const User = require('../models/User');
 const { protect, signToken } = require('../middleware/auth');
-const { sendWelcomeEmail, sendPasswordResetEmail } = require('../utils/email');
+const { sendWelcomeEmail, sendPasswordResetEmail, sendChangePasswordEmail, sendEmailVerificationEmail } = require('../utils/email');
 const { createNotification } = require('../utils/notifications');
+const { logger } = require('../utils/logger');
 const asyncHandler = require('../utils/asyncHandler');
-const { validate, registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, updateProfileSchema } = require('../utils/validation');
+const { validate, registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, updateProfileSchema, changePasswordSchema } = require('../utils/validation');
 
 const setupAdminLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
@@ -38,8 +39,19 @@ router.post('/register', validate(registerSchema), asyncHandler(async (req, res)
   }
 
   const user = await User.create({ firstName, lastName, email, password, phone, country });
+  
+  // Create email verification token and send verification email
+  const verificationToken = user.createEmailVerificationToken();
+  await user.save({ validateBeforeSave: false });
 
-  sendWelcomeEmail({ user }).catch(() => {});
+  const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
+  sendWelcomeEmail({ user }).catch(err => {
+    logger.error('Failed to send welcome email: %s', err.message, { email: user.email });
+  });
+  sendEmailVerificationEmail({ user, verificationUrl }).catch(err => {
+    logger.error('Failed to send email verification: %s', err.message, { email: user.email });
+  });
+
   createNotification({
     type: 'new_user',
     title: 'New User Registered',
@@ -48,6 +60,7 @@ router.post('/register', validate(registerSchema), asyncHandler(async (req, res)
     meta: { userId: user._id, email: user.email, country: user.country },
   });
 
+  // Return token but indicate email verification is pending
   sendAuthResponse(res, user, 201);
 }));
 
@@ -56,7 +69,27 @@ router.post('/login', validate(loginSchema), asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
   const user = await User.findOne({ email }).select('+password');
+  
+  // Check if account is locked
+  if (user && user.isLocked()) {
+    const lockoutRemaining = Math.ceil((user.lockoutUntil - Date.now()) / 1000 / 60);
+    return res.status(429).json({ 
+      error: `Account locked due to multiple failed login attempts. Try again in ${lockoutRemaining} minutes.` 
+    });
+  }
+
   if (!user || !(await user.comparePassword(password))) {
+    // Increment failed attempts on failed login
+    if (user) {
+      user.incrementFailedAttempts();
+      await user.save({ validateBeforeSave: false });
+      
+      if (user.isLocked()) {
+        return res.status(429).json({ 
+          error: 'Too many failed login attempts. Account locked for 15 minutes.' 
+        });
+      }
+    }
     return res.status(401).json({ error: 'Invalid email or password.' });
   }
 
@@ -64,6 +97,16 @@ router.post('/login', validate(loginSchema), asyncHandler(async (req, res) => {
     return res.status(403).json({ error: 'Your account has been deactivated. Contact support.' });
   }
 
+  // Check if email is verified
+  if (!user.emailVerified) {
+    return res.status(403).json({ 
+      error: 'Please verify your email before logging in. Check your inbox for the verification link.',
+      requiresEmailVerification: true 
+    });
+  }
+
+  // Reset failed attempts on successful login
+  user.resetFailedAttempts();
   user.lastLogin = new Date();
   await user.save({ validateBeforeSave: false });
 
@@ -75,9 +118,39 @@ router.post('/admin-login', validate(loginSchema), asyncHandler(async (req, res)
   const { email, password } = req.body;
 
   const user = await User.findOne({ email, role: 'admin' }).select('+password');
+
+  // Check if account is locked
+  if (user && user.isLocked()) {
+    const lockoutRemaining = Math.ceil((user.lockoutUntil - Date.now()) / 1000 / 60);
+    return res.status(429).json({ 
+      error: `Account locked due to multiple failed login attempts. Try again in ${lockoutRemaining} minutes.` 
+    });
+  }
+
   if (!user || !(await user.comparePassword(password))) {
+    if (user) {
+      user.incrementFailedAttempts();
+      await user.save({ validateBeforeSave: false });
+      if (user.isLocked()) {
+        return res.status(429).json({ 
+          error: 'Too many failed login attempts. Account locked for 15 minutes.' 
+        });
+      }
+    }
     return res.status(401).json({ error: 'Invalid admin credentials.' });
   }
+
+  if (!user.emailVerified) {
+    return res.status(403).json({ 
+      error: 'Please verify your email before logging in. Check your inbox for the verification link.',
+      requiresEmailVerification: true 
+    });
+  }
+
+  // Reset failed attempts on successful login
+  user.resetFailedAttempts();
+  user.lastLogin = new Date();
+  await user.save({ validateBeforeSave: false });
 
   sendAuthResponse(res, user);
 }));
@@ -100,16 +173,22 @@ router.patch('/update-profile', protect, validate(updateProfileSchema), asyncHan
 // ─── POST /api/auth/forgot-password ──────────────────────────────────────────
 router.post('/forgot-password', forgotPasswordLimiter, validate(forgotPasswordSchema), asyncHandler(async (req, res) => {
   const user = await User.findOne({ email: req.body.email });
-  if (!user) {
-    return res.json({ message: 'If that email is registered, a reset link has been sent.' });
+  
+  // Always perform crypto operation to prevent timing attacks
+  const fakeToken = crypto.randomBytes(32).toString('hex');
+  const fakeHashedToken = crypto.createHash('sha256').update(fakeToken).digest('hex');
+  
+  if (user) {
+    const resetToken = user.createPasswordResetToken();
+    await user.save({ validateBeforeSave: false });
+
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    await sendPasswordResetEmail({ user, resetUrl }).catch(err => {
+      logger.error('Failed to send password reset email: %s', err.message, { email: user.email });
+    });
   }
 
-  const resetToken = user.createPasswordResetToken();
-  await user.save({ validateBeforeSave: false });
-
-  const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
-  await sendPasswordResetEmail({ user, resetUrl });
-
+  // Always return the same response to prevent email enumeration
   res.json({ message: 'If that email is registered, a reset link has been sent.' });
 }));
 
@@ -129,9 +208,59 @@ router.post('/reset-password/:token', validate(resetPasswordSchema), asyncHandle
   user.password = req.body.password;
   user.passwordResetToken = undefined;
   user.passwordResetExpires = undefined;
+  user.resetFailedAttempts();
   await user.save();
 
+  // Send confirmation email
+  await sendChangePasswordEmail({ user, isReset: true }).catch(err => {
+    logger.error('Failed to send password reset confirmation: %s', err.message, { email: user.email });
+  });
+
   sendAuthResponse(res, user);
+}));
+
+// ─── POST /api/auth/change-password ──────────────────────────────────────────
+router.post('/change-password', protect, validate(changePasswordSchema), asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  const user = await User.findById(req.user._id).select('+password');
+
+  // Verify current password
+  if (!(await user.comparePassword(currentPassword))) {
+    return res.status(401).json({ error: 'Current password is incorrect.' });
+  }
+
+  // Update password
+  user.password = newPassword;
+  await user.save();
+
+  // Send confirmation email
+  await sendChangePasswordEmail({ user, isReset: false }).catch(err => {
+    logger.error('Failed to send password change confirmation: %s', err.message, { email: user.email });
+  });
+
+  res.json({ message: 'Password changed successfully. A confirmation email has been sent.' });
+}));
+
+// ─── POST /api/auth/verify-email/:token ──────────────────────────────────────
+router.post('/verify-email/:token', asyncHandler(async (req, res) => {
+  const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+
+  const user = await User.findOne({
+    emailVerificationToken: hashedToken,
+    emailVerificationExpires: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    return res.status(400).json({ error: 'Email verification token is invalid or has expired.' });
+  }
+
+  if (user.verifyEmail(req.params.token)) {
+    await user.save({ validateBeforeSave: false });
+    res.json({ message: 'Email verified successfully! You can now log in.' });
+  } else {
+    return res.status(400).json({ error: 'Email verification failed. Token is invalid or expired.' });
+  }
 }));
 
 // ─── POST /api/auth/setup-admin ───────────────────────────────────────────────

@@ -23,6 +23,7 @@ const uploadRoutes = require('./routes/upload');
 const notificationRoutes = require('./routes/notifications');
 const sitemapRoutes = require('./routes/sitemap');
 const customOrderRoutes = require('./routes/customOrders');
+const categoriesRoutes = require('./routes/categories');
 
 const app = express();
 app.disable('x-powered-by');
@@ -32,8 +33,17 @@ if (process.env.TRUST_PROXY === 'true' || process.env.NODE_ENV === 'production')
   app.set('trust proxy', 1);
 }
 
-// Enforce HTTPS when requested (useful behind proxies/load balancers)
-if (process.env.ENFORCE_HTTPS === 'true') {
+// Enforce HTTPS in production (always, not optional)
+if (process.env.NODE_ENV === 'production') {
+  app.use((req, res, next) => {
+    const isSecure = req.secure || req.get('x-forwarded-proto') === 'https';
+    if (isSecure) return next();
+    return res.redirect(`https://${req.get('host')}${req.originalUrl}`);
+  });
+}
+
+// Allow optional HTTPS enforcement in other environments via environment variable
+if (process.env.ENFORCE_HTTPS === 'true' && process.env.NODE_ENV !== 'production') {
   app.use((req, res, next) => {
     const isSecure = req.secure || req.get('x-forwarded-proto') === 'https';
     if (isSecure) return next();
@@ -148,6 +158,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/custom-orders', customOrderRoutes);
+app.use('/api/admin/categories', categoriesRoutes);
 app.use('/', sitemapRoutes);
 
 // ─── Health Check ─────────────────────────────────────────────────────────────

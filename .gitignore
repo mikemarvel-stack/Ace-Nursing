@@ -21,6 +21,10 @@ coverage/
 # App logs
 backend/logs/
 
+# Documentation
+*.md
+!README.md
+
 # Logs
 npm-debug.log*
 yarn-debug.log*

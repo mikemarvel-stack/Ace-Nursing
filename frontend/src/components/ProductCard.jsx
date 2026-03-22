@@ -32,24 +32,39 @@ export default function ProductCard({ product }) {
 
   return (
     <Link to={`/product/${slug || _id}`}
-      style={{ textDecoration: 'none', display: 'block' }}>
-      <div className="card" style={{ transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'pointer' }}
+      style={{ textDecoration: 'none', display: 'block' }}
+      aria-label={`View ${title} - $${price} - ${Math.round(rating?.average || 0)} stars`}>
+      <article className="card" style={{ transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'pointer' }}
         onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = 'var(--shadow-lg)'; }}
         onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
 
         {/* Cover */}
         <div style={{ position: 'relative', background: 'linear-gradient(135deg, #0C1B33 0%, #1E3050 100%)', height: 148, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <span style={{ fontSize: 58 }}>{emoji || '📘'}</span>
+          <img 
+            src={product.coverImage?.url} 
+            alt={`${title} study material cover`}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: product.coverImage?.url ? 'block' : 'none' }}
+            loading="lazy"
+          />
+          <span 
+            style={{ fontSize: 58, display: !product.coverImage?.url ? 'block' : 'none' }}
+            aria-hidden="true">
+            {emoji || '📘'}
+          </span>
 
           <div style={{ position: 'absolute', top: 10, left: 10, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
             {badge && (() => {
               const colors = BADGE_COLORS[badge] || ['#E0EAF4', '#1A3A5C'];
               return (
-                <span className="badge" style={{ background: colors[0], color: colors[1] }}>{badge}</span>
+                <span className="badge" style={{ background: colors[0], color: colors[1] }} title={badge}>
+                  {badge}
+                </span>
               );
             })()}
             {discount > 0 && (
-              <span className="badge" style={{ background: '#C49A3C', color: '#fff' }}>-{discount}%</span>
+              <span className="badge" style={{ background: '#C49A3C', color: '#fff' }} title={`${discount}% discount`}>
+                -{discount}%
+              </span>
             )}
           </div>
 
@@ -69,7 +84,9 @@ export default function ProductCard({ product }) {
 
           {rating?.count > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-              <span className="stars">{'★'.repeat(Math.round(rating.average))}{'☆'.repeat(5 - Math.round(rating.average))}</span>
+              <span className="stars" aria-label={`${Math.round(rating.average)} out of 5 stars`}>
+                {'★'.repeat(Math.round(rating.average))}{'☆'.repeat(5 - Math.round(rating.average))}
+              </span>
               <span style={{ fontSize: 12, color: 'var(--muted)' }}>({rating.count})</span>
             </div>
           )}
@@ -85,13 +102,16 @@ export default function ProductCard({ product }) {
                 </span>
               )}
             </div>
-            <button className="btn btn-primary btn-sm" onClick={handleAdd}
+            <button 
+              className="btn btn-primary btn-sm" 
+              onClick={handleAdd}
+              aria-label={`Add ${title} to cart`}
               style={{ borderRadius: 9 }}>
               Add
             </button>
           </div>
         </div>
-      </div>
+      </article>
     </Link>
   );
 }

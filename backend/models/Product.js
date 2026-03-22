@@ -24,22 +24,28 @@ const productSchema = new mongoose.Schema(
       maxlength: [300, 'Short description cannot exceed 300 characters'],
     },
     category: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Category',
       required: [true, 'Category is required'],
-      enum: [
-        // Program levels
-        'RN Prep (NCLEX-RN)', 'LPN/LVN Prep (NCLEX-PN)', 'BSN Courses', 'MSN Courses',
-        'DNP / Advanced Practice', 'Continuing Education (CEU)',
-        // Core courses
-        'Fundamentals of Nursing', 'Pharmacology', 'Med-Surg & Pathophysiology',
-        'Maternal-Newborn & Pediatrics', 'Mental Health Nursing', 'Community & Public Health',
-        'Critical Care & ICU', 'Leadership & Management',
-        // Specialty
-        'Anatomy & Physiology', 'Nutrition & Diet Therapy', 'Health Assessment',
-        'Nursing Research & EBP', 'NCLEX Strategy & Test Prep',
-        // Legacy (kept for backward compat with existing DB docs)
-        'Study Guides', 'Flashcards', 'Reference Cards', 'Checklists', 'Bundles',
-      ],
+      // Also accept string for backward compatibility with legacy categories
+      validate: {
+        validator: async function (v) {
+          if (!v) return false;
+          // If it's a mongose object ID, it should exist in Category collection
+          if (mongoose.Types.ObjectId.isValid(v)) {
+            const Category = require('./Category');
+            const exists = await Category.findById(v);
+            return !!exists;
+          }
+          return true;
+        },
+        message: 'Invalid category reference',
+      },
+    },
+    categoryName: {
+      // Denormalized category name for quick access (updated via middleware)
+      type: String,
+      maxlength: [100],
     },
     price: {
       type: Number,
@@ -144,7 +150,25 @@ productSchema.pre('save', async function (next) {
     if (exists) slug = `${slug}-${Date.now()}`;
     this.slug = slug;
   }
+
+  // Populate categoryName from category reference
+  if (this.isModified('category') && mongoose.Types.ObjectId.isValid(this.category)) {
+    const Category = require('./Category');
+    const cat = await Category.findById(this.category).select('name');
+    if (cat) this.categoryName = cat.name;
+  }
+
   next();
+});
+
+// Populate category on find operations
+productSchema.pre(/^find/, function (next) {
+  if (this.getOptions().lean) {
+    next();
+  } else {
+    this.populate('category', 'name slug emoji seo');
+    next();
+  }
 });
 
 // ─── Methods ──────────────────────────────────────────────────────────────────
