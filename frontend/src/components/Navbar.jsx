@@ -14,23 +14,35 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [materialsOpen, setMaterialsOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const materialsRef = useRef(null);
-
   const [notifOpen, setNotifOpen] = useState(false);
+  
+  const materialsRef = useRef(null);
+  const userMenuRef = useRef(null);
+  const notifRef = useRef(null);
+
   const [notifs, setNotifs] = useState([]);
   const [notifUnread, setNotifUnread] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Close materials dropdown on outside click
+  // Close all dropdowns on outside click
   useEffect(() => {
-    if (!materialsOpen) return;
-    const handler = (e) => {
+    const handleOutsideClick = (e) => {
       if (materialsRef.current && !materialsRef.current.contains(e.target)) {
         setMaterialsOpen(false);
       }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setUserMenuOpen(false);
+      }
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setNotifOpen(false);
+      }
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [materialsOpen]);
+    
+    if (materialsOpen || userMenuOpen || notifOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+      return () => document.removeEventListener('mousedown', handleOutsideClick);
+    }
+  }, [materialsOpen, userMenuOpen, notifOpen]);
 
   // Poll user notifications every 60s when logged in
   useEffect(() => {
@@ -48,6 +60,14 @@ export default function Navbar() {
     const id = setInterval(load, 60000);
     return () => clearInterval(id);
   }, [isAuthenticated]);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/shop?search=${encodeURIComponent(searchQuery)}`);
+      setSearchQuery('');
+    }
+  };
 
   const handleMarkNotifRead = async (n) => {
     if (!n.read) {
@@ -173,27 +193,31 @@ export default function Navbar() {
         >
           {/* Search Bar */}
           <div style={{ position: 'relative', width: 280 }}>
-            <input
-              type="text"
-              placeholder="Search study materials..."
-              style={{
-                width: '100%',
-                padding: '8px 16px 8px 40px',
-                borderRadius: 25,
-                border: '1px solid rgba(255,255,255,0.2)',
-                background: 'rgba(255,255,255,0.1)',
-                color: '#fff',
-                fontSize: 14,
-                outline: 'none',
-                transition: 'all 0.2s',
-              }}
-              onFocus={(e) =>
-                (e.currentTarget.style.borderColor = 'rgba(96,165,250,0.5)')
-              }
-              onBlur={(e) =>
-                (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)')
-              }
-            />
+            <form onSubmit={handleSearch} style={{ display: 'flex', alignItems: 'center' }}>
+              <input
+                type="text"
+                placeholder="Search study materials..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px 16px 8px 40px',
+                  borderRadius: 25,
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  background: 'rgba(255,255,255,0.1)',
+                  color: '#fff',
+                  fontSize: 14,
+                  outline: 'none',
+                  transition: 'all 0.2s',
+                }}
+                onFocus={(e) =>
+                  (e.currentTarget.style.borderColor = 'rgba(96,165,250,0.5)')
+                }
+                onBlur={(e) =>
+                  (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)')
+                }
+              />
+            </form>
             <div
               style={{
                 position: 'absolute',
@@ -202,6 +226,7 @@ export default function Navbar() {
                 transform: 'translateY(-50%)',
                 color: 'rgba(255,255,255,0.6)',
                 fontSize: 16,
+                pointerEvents: 'none',
               }}
             >
               🔍
@@ -313,19 +338,298 @@ export default function Navbar() {
 
         {/* Right Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* Notification, Cart, Auth Buttons remain */}
+          {/* Notification Bell */}
           {isAuthenticated && (
-            <div className="hide-mobile" style={{ position: 'relative' }}>
-              {/* Notification Bell */}
-              {/* ... */}
+            <div className="hide-mobile" ref={notifRef} style={{ position: 'relative' }}>
+              <button
+                onClick={() => setNotifOpen((v) => !v)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: 20,
+                  cursor: 'pointer',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 36,
+                  height: 36,
+                  borderRadius: 8,
+                  transition: 'background 0.2s',
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}
+                onMouseOut={(e) => (e.currentTarget.style.background = 'none')}
+              >
+                🔔
+                {notifUnread > 0 && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 2,
+                      right: 2,
+                      background: '#EF4444',
+                      color: '#fff',
+                      borderRadius: '50%',
+                      width: 20,
+                      height: 20,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 11,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {notifUnread}
+                  </div>
+                )}
+              </button>
+
+              {notifOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 8px)',
+                    right: 0,
+                    background: '#0C1B33',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: 12,
+                    padding: 0,
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.25)',
+                    minWidth: 320,
+                    maxHeight: 400,
+                    overflowY: 'auto',
+                    zIndex: 40,
+                  }}
+                >
+                  <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: '#fff', fontWeight: 600 }}>Notifications</span>
+                    {notifUnread > 0 && (
+                      <button
+                        onClick={handleMarkAllNotifRead}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--primaryL)',
+                          fontSize: 12,
+                          cursor: 'pointer',
+                          textDecoration: 'underline',
+                        }}
+                      >
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+                  {notifs.length === 0 ? (
+                    <div style={{ padding: '24px 16px', textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+                      No notifications
+                    </div>
+                  ) : (
+                    notifs.map((n) => (
+                      <button
+                        key={n._id}
+                        onClick={() => handleMarkNotifRead(n)}
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          background: n.read ? 'transparent' : 'rgba(255,255,255,0.05)',
+                          border: 'none',
+                          borderBottom: '1px solid rgba(255,255,255,0.08)',
+                          color: '#fff',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          transition: 'background 0.15s',
+                        }}
+                        onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}
+                        onMouseOut={(e) => (e.currentTarget.style.background = n.read ? 'transparent' : 'rgba(255,255,255,0.05)')}
+                      >
+                        <div style={{ fontSize: 13, fontWeight: n.read ? 400 : 600 }}>{n.message}</div>
+                        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>{new Date(n.createdAt).toLocaleDateString()}</div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
           )}
 
-          {/* Cart */}
-          {/* ... */}
+          {/* Cart Button */}
+          <button
+            onClick={openCart}
+            className="hide-mobile"
+            style={{
+              background: 'rgba(255,255,255,0.08)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              color: '#fff',
+              padding: '8px 14px',
+              borderRadius: 8,
+              fontSize: 14,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              transition: 'all 0.2s',
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
+              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+            }}
+          >
+            🛒
+            {cartCount > 0 && (
+              <span style={{ background: 'var(--primaryL)', padding: '1px 6px', borderRadius: 4, fontSize: 12, fontWeight: 600 }}>
+                {cartCount}
+              </span>
+            )}
+          </button>
 
-          {/* Auth Buttons */}
-          {/* ... */}
+          {/* Auth Buttons / User Menu */}
+          {isAuthenticated ? (
+            <div className="hide-mobile" ref={userMenuRef} style={{ position: 'relative' }}>
+              <button
+                onClick={() => setUserMenuOpen((v) => !v)}
+                style={{
+                  background: 'rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  color: '#fff',
+                  padding: '8px 14px',
+                  borderRadius: 8,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+                }}
+              >
+                👤 {user?.name || 'Account'}
+              </button>
+
+              {userMenuOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 8px)',
+                    right: 0,
+                    background: '#0C1B33',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: 12,
+                    padding: 8,
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.25)',
+                    minWidth: 180,
+                    zIndex: 40,
+                  }}
+                >
+                  <button
+                    onClick={() => {
+                      navigate('/account');
+                      setUserMenuOpen(false);
+                    }}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '9px 12px',
+                      color: 'rgba(255,255,255,0.9)',
+                      fontSize: 13,
+                      borderRadius: 10,
+                      transition: 'background 0.15s',
+                      background: location.pathname === '/account' ? 'rgba(255,255,255,0.14)' : 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}
+                    onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.14)')}
+                    onMouseOut={(e) => (e.currentTarget.style.background = location.pathname === '/account' ? 'rgba(255,255,255,0.14)' : 'transparent')}
+                  >
+                    My Account
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '9px 12px',
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#EF4444',
+                      fontSize: 13,
+                      cursor: 'pointer',
+                      borderRadius: 10,
+                      transition: 'background 0.15s',
+                      marginTop: 4,
+                    }}
+                    onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,0.1)')}
+                    onMouseOut={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="hide-mobile" style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => navigate('/login')}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  color: '#fff',
+                  padding: '8px 16px',
+                  borderRadius: 8,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  textDecoration: 'none',
+                  transition: 'all 0.2s',
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)';
+                }}
+              >
+                Login
+              </button>
+              <button
+                onClick={() => navigate('/login')}
+                style={{
+                  background: 'var(--primaryL)',
+                  border: 'none',
+                  color: '#fff',
+                  padding: '8px 16px',
+                  borderRadius: 8,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  textDecoration: 'none',
+                  fontWeight: 600,
+                  transition: 'all 0.2s',
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = 'var(--primary)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.3)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'var(--primaryL)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                Sign Up
+              </button>
+            </div>
+          )}
 
           {/* Hamburger menu: only mobile */}
           <button
@@ -359,7 +663,213 @@ export default function Navbar() {
             padding: '16px 20px 24px',
           }}
         >
-          {/* ... mobile menu items ... */}
+          <button
+            onClick={() => {
+              navigate('/');
+              setMenuOpen(false);
+            }}
+            style={{
+              display: 'block',
+              width: '100%',
+              textAlign: 'left',
+              padding: '12px 0',
+              color: location.pathname === '/' ? 'var(--primaryL)' : 'rgba(255,255,255,0.85)',
+              fontSize: 14,
+              fontWeight: location.pathname === '/' ? 600 : 400,
+              borderBottom: '1px solid rgba(255,255,255,0.08)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            Home
+          </button>
+
+          <button
+            onClick={() => {
+              navigate('/custom-order');
+              setMenuOpen(false);
+            }}
+            style={{
+              display: 'block',
+              width: '100%',
+              textAlign: 'left',
+              padding: '12px 0',
+              color: location.pathname === '/custom-order' ? 'var(--primaryL)' : 'rgba(255,255,255,0.85)',
+              fontSize: 14,
+              fontWeight: location.pathname === '/custom-order' ? 600 : 400,
+              borderBottom: '1px solid rgba(255,255,255,0.08)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              marginTop: 8,
+            }}
+          >
+            Custom Orders
+          </button>
+
+          <button
+            onClick={() => {
+              navigate('/shop');
+              setMenuOpen(false);
+            }}
+            style={{
+              display: 'block',
+              width: '100%',
+              textAlign: 'left',
+              padding: '12px 0',
+              color: location.pathname.startsWith('/shop') ? 'var(--primaryL)' : 'rgba(255,255,255,0.85)',
+              fontSize: 14,
+              fontWeight: location.pathname.startsWith('/shop') ? 600 : 400,
+              borderBottom: '1px solid rgba(255,255,255,0.08)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              marginTop: 8,
+            }}
+          >
+            Materials
+          </button>
+
+          {isAdmin() && (
+            <button
+              onClick={() => {
+                navigate('/admin');
+                setMenuOpen(false);
+              }}
+              style={{
+                display: 'block',
+                width: '100%',
+                textAlign: 'left',
+                padding: '12px 0',
+                color: location.pathname === '/admin' ? 'var(--primaryL)' : 'rgba(255,255,255,0.85)',
+                fontSize: 14,
+                fontWeight: location.pathname === '/admin' ? 600 : 400,
+                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                marginTop: 8,
+              }}
+            >
+              Admin Panel
+            </button>
+          )}
+
+          {/* Cart */}
+          <button
+            onClick={() => {
+              openCart();
+              setMenuOpen(false);
+            }}
+            style={{
+              display: 'block',
+              width: '100%',
+              textAlign: 'left',
+              padding: '12px 0',
+              background: 'none',
+              border: 'none',
+              color: 'rgba(255,255,255,0.85)',
+              fontSize: 14,
+              cursor: 'pointer',
+              borderBottom: '1px solid rgba(255,255,255,0.08)',
+              marginTop: 8,
+            }}
+          >
+            🛒 Cart {cartCount > 0 && `(${cartCount})`}
+          </button>
+
+          {/* Mobile Auth */}
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+            {isAuthenticated ? (
+              <>
+                <button
+                  onClick={() => {
+                    navigate('/account');
+                    setMenuOpen(false);
+                  }}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '10px 0',
+                    color: 'rgba(255,255,255,0.85)',
+                    fontSize: 14,
+                    borderBottom: '1px solid rgba(255,255,255,0.08)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  👤 {user?.name || 'My Account'}
+                </button>
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setMenuOpen(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '10px 0',
+                    background: 'none',
+                    border: 'none',
+                    color: '#EF4444',
+                    fontSize: 14,
+                    cursor: 'pointer',
+                    marginTop: 8,
+                  }}
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => {
+                    navigate('/login');
+                    setMenuOpen(false);
+                  }}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '10px 0',
+                    color: 'rgba(255,255,255,0.85)',
+                    fontSize: 14,
+                    borderBottom: '1px solid rgba(255,255,255,0.08)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Login
+                </button>
+                <button
+                  onClick={() => {
+                    navigate('/login');
+                    setMenuOpen(false);
+                  }}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: '10px 12px',
+                    marginTop: 8,
+                    background: 'var(--primaryL)',
+                    color: '#fff',
+                    textAlign: 'center',
+                    borderRadius: 8,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    border: 'none',
+                  }}
+                >
+                  Sign Up
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
     </nav>
