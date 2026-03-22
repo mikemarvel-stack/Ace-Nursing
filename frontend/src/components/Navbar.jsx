@@ -339,7 +339,6 @@ export default function Navbar() {
               height: 38,
               borderRadius: 9,
               fontSize: 20,
-              display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0,
