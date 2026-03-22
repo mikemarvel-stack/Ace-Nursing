@@ -511,7 +511,7 @@ export default function Navbar() {
                   e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
                 }}
               >
-                👤 {user?.name || 'Account'}
+                👤 {user?.name?.split(' ')[0] || 'Account'}
               </button>
 
               {userMenuOpen && (
@@ -801,7 +801,7 @@ export default function Navbar() {
                     cursor: 'pointer',
                   }}
                 >
-                  👤 {user?.name || 'My Account'}
+                  👤 {user?.name?.split(' ')[0] || 'My Account'}
                 </button>
                 <button
                   onClick={() => {
