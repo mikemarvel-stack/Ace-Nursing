@@ -36,6 +36,13 @@ const customOrderSchema = new mongoose.Schema(
       default: 'APA',
     },
 
+    attachments: [{
+      fileKey: String,
+      originalName: String,
+      url: String,
+      uploadedAt: { type: Date, default: Date.now },
+    }],
+
     // ── Status lifecycle ──────────────────────────────────────────────────────
     status: {
       type: String,

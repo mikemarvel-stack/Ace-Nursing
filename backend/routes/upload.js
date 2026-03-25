@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const { protect, restrictTo } = require('../middleware/auth');
+const rateLimit = require('express-rate-limit');
+const { protect, restrictTo, optionalAuth } = require('../middleware/auth');
 const { uploadToS3, deleteFromS3 } = require('../utils/s3');
 const Product = require('../models/Product');
 const asyncHandler = require('../utils/asyncHandler');
@@ -161,35 +162,21 @@ router.post('/product-full', protect, restrictTo('admin'),
 );
 
 // ─── POST /api/upload/custom-order-file ─────────────────────────────────────
-const CUSTOM_ORDER_ALLOWED_MIMES = new Set([
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-powerpoint',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/zip',
-  'application/x-zip-compressed',
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'text/plain',
-]);
-
+// Allow any file format for custom orders (up to limit). File extensions are preserved in S3 key.
 const uploadCustomOrder = multer({
   storage,
-  limits: { fileSize: 100 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    if (CUSTOM_ORDER_ALLOWED_MIMES.has(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Invalid file type. Allowed: PDF, Word, PowerPoint, Excel, ZIP, images, plain text.'), false);
-    }
-  },
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max per file for custom-order attachments
 });
 
-router.post('/custom-order-file', protect, restrictTo('admin'), uploadCustomOrder.single('file'),
+const customOrderUploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // limit each IP to 10 uploads per window
+  message: { error: 'Too many file upload attempts. Please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+router.post('/custom-order-file', optionalAuth, customOrderUploadLimiter, uploadCustomOrder.single('file'),
   asyncHandler(async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file provided.' });
     const { customOrderId } = req.body;

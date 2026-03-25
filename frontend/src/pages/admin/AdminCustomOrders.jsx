@@ -243,6 +243,19 @@ export default function AdminCustomOrders() {
               </div>
             )}
 
+            {selected.attachments?.length > 0 && (
+              <div style={{ background: '#F3F4F6', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13, color: '#374151' }}>
+                <p style={{ fontWeight: 700, marginBottom: 8 }}>📎 Customer Uploaded Files</p>
+                <ul style={{ margin: 0, paddingLeft: 18 }}>
+                  {selected.attachments.map(file => (
+                    <li key={file.fileKey} style={{ marginBottom: 4 }}>
+                      {file.url ? <a href={file.url} target="_blank" rel="noreferrer">{file.originalName}</a> : file.originalName}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* Status update */}
             <div style={{ marginBottom: 16 }}>
               <label className="label">Update Status</label>

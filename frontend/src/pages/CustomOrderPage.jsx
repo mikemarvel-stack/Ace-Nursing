@@ -165,6 +165,19 @@ function OrderCard({ order, onRespond, onRevision, onConfirmReceipt, onPayNow })
         )}
       </div>
 
+      {order.attachments?.length > 0 && (
+        <div style={{ marginBottom: 14, background: '#F3F4F6', border: '1px solid #D1D5DB', borderRadius: 10, padding: '12px 14px' }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 8 }}>📎 Submitted Attachments</p>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: '#374151' }}>
+            {order.attachments.map((file) => (
+              <li key={file.fileKey}>
+                {file.url ? <a href={file.url} target="_blank" rel="noreferrer">{file.originalName}</a> : file.originalName}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Countdown timer when accepted/in_progress */}
       {['accepted', 'in_progress'].includes(order.status) && order.delivery?.dueAt && (
         <div style={{ marginBottom: 14 }}>
@@ -307,6 +320,11 @@ export default function CustomOrderPage() {
   const [downloadUrl, setDownloadUrl] = useState(null);
   const [resolvingPay, setResolvingPay] = useState(false); // true while loading orders for ?pay= redirect
 
+  const [attachments, setAttachments] = useState([]);
+  const [attachUploadProgress, setAttachUploadProgress] = useState(0);
+  const [attachUploading, setAttachUploading] = useState(false);
+  const fileInputRef = useRef();
+
   const [form, setForm] = useState({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
@@ -329,6 +347,40 @@ export default function CustomOrderPage() {
   });
 
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
+
+  const uploadAttachment = async (file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    setAttachUploading(true);
+    setAttachUploadProgress(0);
+
+    try {
+      const res = await uploadAPI.uploadCustomOrderFile(fd, {
+        onProgress: (evt) => {
+          if (evt.total) setAttachUploadProgress(Math.round((evt.loaded / evt.total) * 100));
+        },
+      });
+
+      const uploaded = {
+        key: res.data.key,
+        originalName: res.data.originalName,
+        url: res.data.signedUrl,
+      };
+      setAttachments(prev => [...prev, uploaded]);
+      toast.success(`Uploaded: ${file.name}`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Attachment upload failed. Please try again.');
+    } finally {
+      setAttachUploading(false);
+      setAttachUploadProgress(0);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveAttachment = (key) => {
+    setAttachments(prev => prev.filter(item => item.key !== key));
+  };
 
   const loadMyOrders = async (autoPayId) => {
     if (!isAuthenticated) return;
@@ -367,9 +419,11 @@ export default function CustomOrderPage() {
     }
     setSubmitting(true);
     try {
-      const res = await customOrdersAPI.submit(form);
+      const payload = { ...form, attachments };
+      const res = await customOrdersAPI.submit(payload);
       setSubmittedOrder(res.data);
       setView('success');
+      setAttachments([]);
       toast.success('Request submitted successfully!');
     } catch (err) {
       toast.error(err.response?.data?.error || 'Submission failed. Please try again.');
@@ -580,10 +634,44 @@ export default function CustomOrderPage() {
                   </div>
                   <div>
                     <label className="label">Files to Attach <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(optional)</span></label>
+
+                    {attachments.length > 0 && (
+                      <div style={{ marginBottom: 10 }}>
+                        {attachments.map(file => (
+                          <div key={file.key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, background: '#F3F4F6', borderRadius: 8, padding: '8px 10px' }}>
+                            <span style={{ fontSize: 13, color: '#111', flex: 1 }}>{file.originalName}</span>
+                            <a href={file.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#0C1B33', textDecoration: 'underline' }}>Preview</a>
+                            <button type="button" onClick={() => handleRemoveAttachment(file.key)} style={{ border: 'none', background: 'transparent', color: '#DC2626', cursor: 'pointer' }}>×</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      style={{ display: 'none' }}
+                      onChange={async (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        await uploadAttachment(file);
+                      }}
+                    />
+                    <button
+                      className="btn btn-outline btn-sm"
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={attachUploading}
+                      style={{ width: '100%', justifyContent: 'center', marginBottom: 8 }}
+                    >
+                      {attachUploading ? `Uploading… ${attachUploadProgress}%` : '📎 Upload File'}
+                    </button>
+
+                    <label className="label" style={{ marginTop: 10 }}>Attachment Notes</label>
                     <textarea className="input" rows={2} value={form.attachmentNotes} onChange={set('attachmentNotes')}
-                      placeholder="Describe any files you'll send via email (e.g. rubric PDF, lecture notes, case study document)…"
+                      placeholder="Describe files or relevant context (e.g. rubric, lecture notes)."
                       style={{ resize: 'vertical' }} />
-                    <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>Send files to <strong>supportacenursing@gmail.com</strong> with your request number after submitting.</p>
+                    <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>You can still email extra materials to <strong>supportacenursing@gmail.com</strong> if needed.</p>
                   </div>
                 </div>
               </div>

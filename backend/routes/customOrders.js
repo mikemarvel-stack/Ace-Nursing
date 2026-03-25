@@ -19,6 +19,7 @@ router.post('/', optionalAuth, asyncHandler(async (req, res) => {
     firstName, lastName, email, phone,
     subject, assignmentType, pages, deadline, requirements,
     attachmentNotes, academicLevel, citationStyle,
+    attachments,
   } = req.body;
 
   if (!firstName || !lastName || !email || !subject || !assignmentType || !deadline || !requirements) {
@@ -33,6 +34,7 @@ router.post('/', optionalAuth, asyncHandler(async (req, res) => {
     customerInfo: { firstName, lastName, email, phone },
     subject, assignmentType, pages, deadline, requirements,
     attachmentNotes, academicLevel, citationStyle,
+    attachments: Array.isArray(attachments) ? attachments : [],
     ipAddress: req.ip,
   });
 
