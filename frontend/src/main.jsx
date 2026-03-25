@@ -24,6 +24,8 @@ const CheckoutPage      = lazy(() => import('./pages/CheckoutPage'));
 const OrderSuccessPage  = lazy(() => import('./pages/OrderSuccessPage'));
 const LoginPage         = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
 const RegisterPage      = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.RegisterPage })));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const AccountPage       = lazy(() => import('./pages/AccountPage'));
 const ContactPage       = lazy(() => import('./pages/ContactPage'));
 const FAQPage           = lazy(() => import('./pages/FAQPage'));
@@ -120,6 +122,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 <Route path="/order-success" element={<OrderSuccessPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
                 <Route path="/contact" element={<ContactPage />} />
                 <Route path="/faq" element={<FAQPage />} />
                 <Route path="/info/:slug" element={<PolicyPage />} />

@@ -6,7 +6,7 @@ const getResend = () => {
   return _resend;
 };
 
-const FROM = `${process.env.FROM_NAME || 'AceNursing'} <${process.env.FROM_EMAIL || 'supportacenursing@gmail.com'}>`;
+const FROM = `${process.env.FROM_NAME || 'AceNursing'} <supportacenursing@gmail.com>`;
 
 // Retry helper — exponential backoff, up to 3 attempts
 async function sendWithRetry(payload, attempts = 3) {
@@ -158,6 +158,29 @@ exports.sendWelcomeEmail = async ({ user }) => {
   });
 };
 
+// ─── Email: Email Verification ────────────────────────────────────────────────
+exports.sendEmailVerificationEmail = async ({ user, verificationUrl }) => {
+  const content = `
+    <h1>Verify Your Email Address</h1>
+    <p>Hi ${user.firstName}, welcome to AceNursing! Please verify your email address to complete your registration.</p>
+    <p>Click the button below to verify your email. This link expires in <strong>24 hours</strong>.</p>
+    <div style="text-align: center; margin: 28px 0;">
+      <a href="${verificationUrl}" class="btn">Verify Email Address</a>
+    </div>
+    <div class="info-box">
+      <p>🔒 This verification is required to log in to your account and access your purchases.</p>
+    </div>
+    <p style="font-size: 12px; color: #999;">Link: ${verificationUrl}</p>
+  `;
+
+  return sendWithRetry({
+    from: FROM,
+    to: user.email,
+    subject: 'Verify Your AceNursing Email Address',
+    html: emailWrapper(content),
+  });
+};
+
 // ─── Email: Password Reset ────────────────────────────────────────────────────
 exports.sendPasswordResetEmail = async ({ user, resetUrl }) => {
   const content = `
@@ -177,6 +200,27 @@ exports.sendPasswordResetEmail = async ({ user, resetUrl }) => {
     from: FROM,
     to: user.email,
     subject: 'Reset Your AceNursing Password',
+    html: emailWrapper(content),
+  });
+};
+
+// ─── Email: Password Change Confirmation ──────────────────────────────────────
+exports.sendChangePasswordEmail = async ({ user, isReset = false }) => {
+  const content = `
+    <h1>Password ${isReset ? 'Reset' : 'Changed'} Successfully</h1>
+    <p>Hi ${user.firstName}, your AceNursing password has been ${isReset ? 'reset' : 'changed'} successfully.</p>
+    <p>If you made this change, no further action is required.</p>
+    ${!isReset ? '<div class="info-box"><p>🔒 If you did not make this change, please contact support immediately at supportacenursing@gmail.com</p></div>' : ''}
+    <div style="text-align: center; margin: 28px 0;">
+      <a href="${process.env.FRONTEND_URL}/account" class="btn">View Account →</a>
+    </div>
+    <p style="font-size: 13px; color: #999;">Account: ${user.email}</p>
+  `;
+
+  return sendWithRetry({
+    from: FROM,
+    to: user.email,
+    subject: `AceNursing Password ${isReset ? 'Reset' : 'Changed'}`,
     html: emailWrapper(content),
   });
 };

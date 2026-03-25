@@ -120,6 +120,10 @@ export const authAPI = {
     api.post('/auth/forgot-password', { email }, { signal: options.signal }),
   resetPassword: (token, password, options = {}) =>
     api.post(`/auth/reset-password/${token}`, { password }, { signal: options.signal }),
+  changePassword: (data, options = {}) =>
+    api.post('/auth/change-password', data, { signal: options.signal }),
+  verifyEmail: (token, options = {}) =>
+    api.post(`/auth/verify-email/${token}`, {}, { signal: options.signal }),
 };
 
 // ─── Payment API ───────────────────────────────────────────────────────────────

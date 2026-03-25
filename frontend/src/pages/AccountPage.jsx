@@ -14,6 +14,8 @@ export default function AccountPage() {
   const [notifUnread, setNotifUnread] = useState(0);
   const [form, setForm] = useState({ firstName: user?.firstName || '', lastName: user?.lastName || '', phone: user?.phone || '', country: user?.country || '' });
   const [saving, setSaving] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     paymentAPI.getMyOrders()
@@ -52,6 +54,46 @@ export default function AccountPage() {
     }
   };
 
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 12) {
+      toast.error('New password must be at least 12 characters long');
+      return;
+    }
+
+    // Basic password strength check
+    const hasLower = /[a-z]/.test(passwordForm.newPassword);
+    const hasUpper = /[A-Z]/.test(passwordForm.newPassword);
+    const hasNumber = /\d/.test(passwordForm.newPassword);
+    const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(passwordForm.newPassword);
+
+    if (!hasLower || !hasUpper || !hasNumber || !hasSpecial) {
+      toast.error('New password must contain uppercase, lowercase, numbers, and special characters');
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      await authAPI.changePassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      toast.success('Password changed successfully! A confirmation email has been sent.');
+    } catch (err) {
+      const errorMsg = err.response?.data?.error || 'Failed to change password';
+      toast.error(errorMsg);
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   const STATUS_COLORS = {
     completed: ['#D1FAE5', '#065F46'],
     pending: ['#FEF3C7', '#92400E'],
@@ -74,12 +116,12 @@ export default function AccountPage() {
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 4, marginBottom: 28, background: 'var(--gray)', borderRadius: 12, padding: 4, width: 'fit-content' }} className="account-tabs">
-          {['orders', 'notifications', 'profile'].map(t => (
+          {['orders', 'notifications', 'profile', 'security'].map(t => (
             <button key={t} onClick={() => setTab(t)}
               style={{ padding: '9px 22px', borderRadius: 9, border: 'none', background: tab === t ? 'var(--navy)' : 'transparent', color: tab === t ? '#fff' : 'var(--muted)', fontWeight: tab === t ? 700 : 400, fontSize: 14, cursor: 'pointer', textTransform: 'capitalize', transition: 'all 0.2s', position: 'relative' }}>
               {t === 'orders' ? '🧾 My Orders' : t === 'notifications' ? (
                 <>🔔 Notifications{notifUnread > 0 && <span style={{ marginLeft: 6, background: '#DC2626', color: '#fff', borderRadius: 10, fontSize: 11, fontWeight: 700, padding: '1px 6px' }}>{notifUnread}</span>}</>
-              ) : '👤 Profile'}
+              ) : t === 'profile' ? '👤 Profile' : '🔒 Security'}
             </button>
           ))}
         </div>
@@ -187,46 +229,67 @@ export default function AccountPage() {
           </div>
         )}
 
-        {/* Profile Tab */}
-        {tab === 'profile' && (
+        {/* Security Tab */}
+        {tab === 'security' && (
           <div style={{ maxWidth: 520 }}>
-            <form onSubmit={handleSave} className="card" style={{ padding: 28 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--navy)', marginBottom: 22 }}>Edit Profile</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }} className="name-grid">
-                {[['firstName', 'First Name'], ['lastName', 'Last Name']].map(([k, l]) => (
-                  <div key={k}>
-                    <label className="label">{l}</label>
-                    <input className="input" value={form[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))} />
-                  </div>
-                ))}
-              </div>
+            <form onSubmit={handleChangePassword} className="card" style={{ padding: 28, marginBottom: 16 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--navy)', marginBottom: 22 }}>Change Password</h2>
+
               <div style={{ marginBottom: 16 }}>
-                <label className="label">Email</label>
-                <input className="input" value={user?.email} disabled style={{ opacity: 0.6, cursor: 'not-allowed' }} />
-                <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>Email cannot be changed</p>
+                <label className="label">Current Password</label>
+                <input
+                  type="password"
+                  className="input"
+                  value={passwordForm.currentPassword}
+                  onChange={e => setPasswordForm(f => ({ ...f, currentPassword: e.target.value }))}
+                  placeholder="Enter your current password"
+                  required
+                />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }} className="name-grid">
-                <div>
-                  <label className="label">Phone</label>
-                  <input className="input" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="+254 7XX XXX XXX" />
-                </div>
-                <div>
-                  <label className="label">Country</label>
-                  <select className="input" value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value }))}>
-                    {['Kenya', 'Uganda', 'Tanzania', 'Nigeria', 'Ghana', 'South Africa', 'United States', 'United Kingdom', 'Canada', 'Other'].map(c => <option key={c}>{c}</option>)}
-                  </select>
-                </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label className="label">New Password</label>
+                <input
+                  type="password"
+                  className="input"
+                  value={passwordForm.newPassword}
+                  onChange={e => setPasswordForm(f => ({ ...f, newPassword: e.target.value }))}
+                  placeholder="Enter new password"
+                  minLength="12"
+                  required
+                />
+                <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
+                  Must be 12+ characters with uppercase, lowercase, numbers, and special characters
+                </p>
               </div>
-              <button className="btn btn-primary" type="submit" disabled={saving}>
-                {saving ? <><span className="spinner" /> Saving…</> : 'Save Changes'}
+
+              <div style={{ marginBottom: 24 }}>
+                <label className="label">Confirm New Password</label>
+                <input
+                  type="password"
+                  className="input"
+                  value={passwordForm.confirmPassword}
+                  onChange={e => setPasswordForm(f => ({ ...f, confirmPassword: e.target.value }))}
+                  placeholder="Confirm new password"
+                  minLength="12"
+                  required
+                />
+              </div>
+
+              <button className="btn btn-primary" type="submit" disabled={changingPassword}>
+                {changingPassword ? <><span className="spinner" /> Changing Password…</> : 'Change Password'}
               </button>
             </form>
 
-            <div className="card" style={{ padding: 24, marginTop: 16 }}>
-              <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--error)', marginBottom: 12 }}>Danger Zone</h3>
-              <button className="btn btn-danger" onClick={() => { logout(); navigate('/'); toast.success('Logged out'); }}>
-                🚪 Log Out
-              </button>
+            <div className="card" style={{ padding: 24 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--navy)', marginBottom: 12 }}>Password Security Tips</h3>
+              <ul style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.6, margin: 0, paddingLeft: 20 }}>
+                <li>Use at least 12 characters</li>
+                <li>Include uppercase and lowercase letters</li>
+                <li>Add numbers and special characters</li>
+                <li>Don't reuse passwords from other sites</li>
+                <li>Change your password regularly</li>
+              </ul>
             </div>
           </div>
         )}
