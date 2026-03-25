@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 
 const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-import toast from 'react-hot-toast';
 
 const AdminCategories = () => {
   const [categories, setCategories] = useState([]);
